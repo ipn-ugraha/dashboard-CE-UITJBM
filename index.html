@@ -45,6 +45,7 @@
   .urow { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 20px; }
   .utab { padding: 6px 16px; font-size: 13px; border: 0.5px solid var(--border2); border-radius: var(--radius); background: transparent; color: var(--text2); cursor: pointer; transition: all 0.15s; }
   .utab.on { background: #E6F1FB; color: #0C447C; border-color: #185FA5; font-weight: 600; }
+  .utab.total-tab.on { background: #EEEDFE; color: #3C3489; border-color: #534AB7; }
   .utab:hover:not(.on) { background: var(--bg2); }
   .srow { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; margin-bottom: 20px; }
   .sc { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; }
@@ -269,18 +270,27 @@ const GROUP_META={
   T:{label:"T – Transmisi",badge_bg:"#FCEBEB",badge_txt:"#791F1F",bar:"#E24B4A"},
   P:{label:"P – Proteksi & Catu Daya",badge_bg:"#E1F5EE",badge_txt:"#085041",bar:"#0F6E56"},
 };
-const UPTS=Object.keys(D);
+const UPTS_REAL=Object.keys(D);
+const UPTS=[...UPTS_REAL,"TOTAL UIT JBM"];
 let activeUpt="GRESIK";
 const lineCharts={G:null,T:null,P:null};
 
 function pct(o,t){if(!t)return 100;return Math.round((1-o/t)*100)}
 function oColor(o,t){if(!t)return"#a0a09a";if(o===0)return"#0F6E56";if(o===t)return"#E24B4A";return"#BA7517"}
-function groupAgg(upt,grp,wi){let t=0,o=0;Object.values(D[upt][grp]).forEach(a=>{t+=a[wi].t;o+=a[wi].o});return{t,o}}
+function groupAgg(upt,grp,wi){
+  if(upt==="TOTAL UIT JBM"){
+    let t=0,o=0;
+    UPTS_REAL.forEach(u=>Object.values(D[u][grp]).forEach(a=>{t+=a[wi].t;o+=a[wi].o}));
+    return{t,o};
+  }
+  let t=0,o=0;Object.values(D[upt][grp]).forEach(a=>{t+=a[wi].t;o+=a[wi].o});return{t,o};
+}
 
 function renderUtabs(){
-  document.getElementById("utabs").innerHTML=UPTS.map(u=>
-    `<button class="utab${u===activeUpt?" on":""}" onclick="setUpt('${u}')">${u}</button>`
-  ).join("");
+  document.getElementById("utabs").innerHTML=UPTS.map(u=>{
+    const isTot=u==="TOTAL UIT JBM";
+    return `<button class="utab${isTot?" total-tab":""}${u===activeUpt?" on":""}" onclick="setUpt('${u}')">${u}</button>`;
+  }).join("");
 }
 
 function renderSummary(){
@@ -302,6 +312,7 @@ function renderSummary(){
 }
 
 function renderPanels(){
+  if(activeUpt==="TOTAL UIT JBM"){ renderTotalPanels(); return; }
   const n=WL.length-1;
   document.getElementById("panels").innerHTML=["G","T","P"].map(gKey=>{
     const gm=GROUP_META[gKey];
@@ -373,6 +384,38 @@ function renderLineCharts(){
   });
 }
 
+
+function renderTotalPanels(){
+  const n=WL.length-1;
+  document.getElementById("panels").innerHTML=["G","T","P"].map(gKey=>{
+    const gm=GROUP_META[gKey];
+    const rows=UPTS_REAL.map(upt=>{
+      const cur=groupAgg(upt,gKey,n);
+      const prv=groupAgg(upt,gKey,n-1);
+      if(!cur.t&&!cur.o)return"";
+      const p=pct(cur.o,cur.t),oc=oColor(cur.o,cur.t);
+      const d=prv.o-cur.o;
+      const dStr=d>0?`<span class="delta" style="color:#0F6E56">▼${d}</span>`:d<0?`<span class="delta" style="color:#E24B4A">▲${Math.abs(d)}</span>`:"";
+      return `<div class="prow">
+        <div class="prow-top">
+          <span class="pname" style="font-weight:500">${upt}</span>
+          <span class="pnums" style="color:${oc}">${cur.o.toLocaleString()} / ${cur.t.toLocaleString()}${dStr}</span>
+          <span class="ppct" style="color:${oc}">${p}%</span>
+        </div>
+        <div class="pbar-bg"><div class="pbar-f" style="width:${p}%;background:${gm.bar}"></div></div>
+      </div>`;
+    }).filter(Boolean).join("");
+    const tot=groupAgg("TOTAL UIT JBM",gKey,n);
+    return `<div class="panel">
+      <div class="ptitle">
+        <span class="pbadge" style="background:${gm.badge_bg};color:${gm.badge_txt}">${gKey}</span>
+        <span style="color:#6b6b6b;font-size:11px">${gm.label.split("–")[1].trim()}</span>
+        <span style="margin-left:auto;font-size:11px;font-weight:600;color:${oColor(tot.o,tot.t)}">${pct(tot.o,tot.t)}% selesai</span>
+      </div>
+      ${rows||'<div style="font-size:11px;color:#a0a09a;padding:6px 0">Tidak ada anomali</div>'}
+    </div>`;
+  }).join("");
+}
 function setUpt(u){activeUpt=u;renderAll();}
 function renderAll(){renderUtabs();renderSummary();renderPanels();renderChartsRow();renderLineCharts();}
 document.getElementById("last-update-top").textContent="Data: "+LAST_UPDATE;
