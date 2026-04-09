@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Common Enemy Dashboard — UIT JBM 2026</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg2: #f5f5f3;
+    --bg3: #efefec;
+    --text: #1a1a1a;
+    --text2: #6b6b6b;
+    --text3: #a0a09a;
+    --border: rgba(0,0,0,0.1);
+    --border2: rgba(0,0,0,0.18);
+    --blue: #185FA5;
+    --red: #E24B4A;
+    --green: #0F6E56;
+    --amber: #BA7517;
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a1a;
+      --bg2: #242424;
+      --bg3: #2e2e2e;
+      --text: #f0f0ec;
+      --text2: #a0a09a;
+      --text3: #6b6b68;
+      --border: rgba(255,255,255,0.1);
+      --border2: rgba(255,255,255,0.18);
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg3); color: var(--text); min-height: 100vh; }
+  .topbar { background: var(--bg); border-bottom: 0.5px solid var(--border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+  .logo { font-size: 13px; font-weight: 600; letter-spacing: 0.03em; color: var(--text); }
+  .logo span { color: var(--blue); }
+  .badge-new { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 20px; background: #E1F5EE; color: #085041; font-weight: 600; margin-left: 8px; }
+  .lastupdate { font-size: 11px; color: var(--text3); }
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px 20px; }
+  .urow { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 20px; }
+  .utab { padding: 6px 16px; font-size: 13px; border: 0.5px solid var(--border2); border-radius: var(--radius); background: transparent; color: var(--text2); cursor: pointer; transition: all 0.15s; }
+  .utab.on { background: #E6F1FB; color: #0C447C; border-color: #185FA5; font-weight: 600; }
+  .utab:hover:not(.on) { background: var(--bg2); }
+  .srow { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; margin-bottom: 20px; }
+  .sc { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; }
+  .slb { font-size: 11px; color: var(--text2); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .sv { font-size: 22px; font-weight: 600; }
+  .ssub { font-size: 11px; color: var(--text3); margin-top: 3px; }
+  .panels { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; margin-bottom: 20px; }
+  .panel { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; }
+  .ptitle { font-size: 12px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 7px; }
+  .pbadge { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .prow { margin-bottom: 11px; }
+  .prow-top { display: flex; align-items: baseline; gap: 6px; margin-bottom: 4px; }
+  .pname { font-size: 11px; color: var(--text2); flex: 1; line-height: 1.3; }
+  .pnums { font-size: 11px; white-space: nowrap; font-weight: 600; }
+  .ppct { font-size: 11px; font-weight: 600; min-width: 36px; text-align: right; }
+  .pbar-bg { height: 7px; background: var(--bg3); border-radius: 4px; overflow: hidden; }
+  .pbar-f { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+  .delta { font-size: 10px; margin-left: 3px; }
+  .lgrow { display: flex; flex-wrap: wrap; gap: 14px; font-size: 11px; color: var(--text2); margin-bottom: 6px; }
+  .lgdot { width: 9px; height: 9px; border-radius: 2px; display: inline-block; margin-right: 4px; }
+  .charts-row { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; margin-bottom: 20px; }
+  .chart-box { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; }
+  .cbtitle { font-size: 12px; font-weight: 600; margin-bottom: 8px; color: var(--text); }
+  .ch-wrap { position: relative; width: 100%; height: 190px; }
+  .footer { text-align: center; font-size: 11px; color: var(--text3); padding: 16px 0 32px; border-top: 0.5px solid var(--border); }
+  @media (max-width: 768px) {
+    .panels, .charts-row { grid-template-columns: 1fr; }
+    .srow { grid-template-columns: repeat(3, minmax(0,1fr)); }
+    .topbar { padding: 12px 16px; }
+    .container { padding: 16px 12px; }
+  }
+  @media (max-width: 480px) {
+    .srow { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <div class="logo">PLN <span>UIT JBM</span> — Common Enemy 2026</div>
+  </div>
+  <div class="lastupdate" id="last-update-top">Data: 09 April 2026</div>
+</div>
+
+<div class="container">
+  <div class="urow" id="utabs"></div>
+  <div class="srow" id="srow"></div>
+  <div class="panels" id="panels"></div>
+  <div class="lgrow">
+    <span><span class="lgdot" style="background:#185FA5"></span>Target</span>
+    <span><span class="lgdot" style="background:#E24B4A"></span>Open (pending)</span>
+    <span style="color:var(--text3)">· titik terakhir = data terkini</span>
+  </div>
+  <div class="charts-row" id="charts-row"></div>
+  <div class="footer">
+    PT PLN Persero · Unit Induk Transmisi Jawa Bagian Madura · Dashboard Common Enemy 2026<br>
+    Format: Open / Target · % = progress penyelesaian · Warna: <span style="color:#0F6E56">hijau=tuntas</span> · <span style="color:#BA7517">oranye=sebagian</span> · <span style="color:#E24B4A">merah=belum</span>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// DATA — update bagian ini setiap ada laporan baru
+// Format: array of {t: target, o: open} per tanggal
+// ============================================================
+const WL = ["08 Feb","15 Feb","22 Feb","01 Mar","08 Mar","15 Mar","22 Mar","29 Mar","05 Apr","08 Apr","09 Apr"];
+const LAST_UPDATE = "09 April 2026";
+
+const D = {
+  MALANG:{
+    G:{
+      "G1 AHI Trafo":       [{t:7,o:7},{t:7,o:7},{t:7,o:6},{t:7,o:6},{t:7,o:6},{t:7,o:6},{t:7,o:6},{t:7,o:6},{t:7,o:5},{t:7,o:5},{t:7,o:5}],
+      "G1 Anti Binatang":   [{t:22,o:22},{t:22,o:22},{t:22,o:22},{t:22,o:22},{t:22,o:22},{t:22,o:22},{t:22,o:22},{t:22,o:22},{t:22,o:22},{t:22,o:22},{t:22,o:22}],
+      "G1 Relay Internal":  [{t:13,o:13},{t:13,o:13},{t:13,o:13},{t:13,o:13},{t:13,o:13},{t:13,o:13},{t:13,o:11},{t:13,o:11},{t:13,o:11},{t:13,o:11},{t:13,o:11}],
+      "G2 MV Aparatus":     [{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5}],
+      "G3 Switchyard AHI":  [{t:67,o:67},{t:67,o:67},{t:67,o:67},{t:67,o:65},{t:67,o:65},{t:67,o:65},{t:67,o:65},{t:67,o:65},{t:67,o:64},{t:67,o:61},{t:67,o:61}],
+      "G4 GIS":             [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
+      "G5 Common Facility": [{t:18,o:18},{t:18,o:17},{t:18,o:15},{t:18,o:12},{t:18,o:10},{t:18,o:7},{t:18,o:7},{t:18,o:7},{t:18,o:7},{t:18,o:7},{t:20,o:9}],
+    },
+    T:{
+      "T1 Cable Sheath":    [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
+      "T2 SUTT AHI":        [{t:235,o:235},{t:235,o:235},{t:235,o:235},{t:235,o:235},{t:235,o:235},{t:235,o:235},{t:235,o:235},{t:235,o:235},{t:235,o:235},{t:235,o:235},{t:235,o:235}],
+      "T2 ROW B1":          [{t:2295,o:1722},{t:2295,o:280},{t:2295,o:280},{t:2295,o:0},{t:2295,o:0},{t:2295,o:0},{t:2295,o:0},{t:2295,o:0},{t:2295,o:0},{t:2295,o:0},{t:2295,o:0}],
+      "T2 Anti Binatang":   [{t:22,o:22},{t:22,o:22},{t:22,o:22},{t:22,o:22},{t:22,o:22},{t:22,o:22},{t:22,o:22},{t:22,o:22},{t:22,o:22},{t:22,o:22},{t:280,o:180}],
+      "T2 Tapak Tower":     [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1}],
+    },
+    P:{
+      "P1 AHI Proteksi":    [{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1}],
+      "P1 Design Proteksi": [{t:12,o:12},{t:12,o:12},{t:12,o:12},{t:12,o:12},{t:12,o:8},{t:12,o:8},{t:12,o:8},{t:12,o:8},{t:12,o:8},{t:12,o:8},{t:12,o:8}],
+      "P2 AHI Catu Daya":   [{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1}],
+      "P2 Design Catu Daya":[{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6}],
+    },
+  },
+  SURABAYA:{
+    G:{
+      "G1 AHI Trafo":       [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
+      "G1 Anti Binatang":   [{t:37,o:37},{t:37,o:37},{t:37,o:37},{t:37,o:37},{t:37,o:37},{t:37,o:13},{t:37,o:13},{t:37,o:13},{t:37,o:13},{t:37,o:13},{t:37,o:13}],
+      "G1 Relay Internal":  [{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1}],
+      "G2 MV Aparatus":     [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
+      "G3 Switchyard AHI":  [{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:12,o:3}],
+      "G4 GIS":             [{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:3,o:2}],
+      "G5 Common Facility": [{t:15,o:15},{t:15,o:15},{t:15,o:15},{t:15,o:12},{t:15,o:12},{t:15,o:5},{t:15,o:5},{t:15,o:5},{t:15,o:5},{t:15,o:5},{t:16,o:6}],
+    },
+    T:{
+      "T1 Cable Sheath":    [{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:7,o:7}],
+      "T2 SUTT AHI":        [{t:19,o:19},{t:19,o:19},{t:19,o:19},{t:19,o:19},{t:19,o:19},{t:19,o:19},{t:19,o:19},{t:19,o:19},{t:19,o:15},{t:19,o:15},{t:19,o:15}],
+      "T2 ROW B1":          [{t:45,o:34},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0}],
+      "T2 Anti Binatang":   [{t:37,o:37},{t:37,o:37},{t:37,o:37},{t:37,o:37},{t:37,o:37},{t:37,o:13},{t:37,o:13},{t:37,o:13},{t:37,o:13},{t:37,o:13},{t:66,o:66}],
+      "T2 Tapak Tower":     [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
+    },
+    P:{
+      "P1 AHI Proteksi":    [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
+      "P1 Design Proteksi": [{t:18,o:18},{t:18,o:18},{t:18,o:18},{t:18,o:16},{t:18,o:16},{t:18,o:16},{t:18,o:16},{t:18,o:16},{t:18,o:16},{t:18,o:16},{t:18,o:16}],
+      "P2 AHI Catu Daya":   [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
+      "P2 Design Catu Daya":[{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3}],
+    },
+  },
+  GRESIK:{
+    G:{
+      "G1 AHI Trafo":       [{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0}],
+      "G1 Anti Binatang":   [{t:32,o:32},{t:32,o:32},{t:32,o:32},{t:32,o:21},{t:32,o:2},{t:32,o:2},{t:32,o:2},{t:32,o:2},{t:32,o:2},{t:32,o:2},{t:32,o:2}],
+      "G1 Relay Internal":  [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
+      "G2 MV Aparatus":     [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
+      "G3 Switchyard AHI":  [{t:48,o:45},{t:48,o:42},{t:48,o:40},{t:48,o:40},{t:48,o:40},{t:48,o:40},{t:48,o:40},{t:48,o:40},{t:48,o:40},{t:48,o:40},{t:48,o:40}],
+      "G4 GIS":             [{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1}],
+      "G5 Common Facility": [{t:26,o:26},{t:26,o:26},{t:26,o:26},{t:26,o:24},{t:26,o:23},{t:26,o:15},{t:26,o:15},{t:26,o:15},{t:26,o:15},{t:26,o:15},{t:27,o:17}],
+    },
+    T:{
+      "T1 Cable Sheath":    [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:1,o:1}],
+      "T2 SUTT AHI":        [{t:33,o:33},{t:33,o:33},{t:33,o:33},{t:33,o:33},{t:33,o:33},{t:33,o:29},{t:33,o:24},{t:33,o:24},{t:33,o:22},{t:33,o:22},{t:33,o:22}],
+      "T2 ROW B1":          [{t:2169,o:2114},{t:2169,o:1895},{t:2169,o:1669},{t:2169,o:1250},{t:2169,o:1040},{t:2169,o:128},{t:2169,o:0},{t:2169,o:0},{t:2169,o:0},{t:2169,o:0},{t:2169,o:0}],
+      "T2 Anti Binatang":   [{t:32,o:32},{t:32,o:32},{t:32,o:32},{t:32,o:21},{t:32,o:2},{t:32,o:2},{t:32,o:2},{t:32,o:2},{t:32,o:2},{t:32,o:2},{t:157,o:150}],
+      "T2 Tapak Tower":     [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
+    },
+    P:{
+      "P1 AHI Proteksi":    [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
+      "P1 Design Proteksi": [{t:28,o:28},{t:28,o:28},{t:28,o:28},{t:28,o:26},{t:28,o:26},{t:28,o:26},{t:28,o:26},{t:28,o:26},{t:28,o:25},{t:28,o:25},{t:28,o:25}],
+      "P2 AHI Catu Daya":   [{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:1},{t:2,o:1},{t:2,o:1}],
+      "P2 Design Catu Daya":[{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
+    },
+  },
+  BALI:{
+    G:{
+      "G1 AHI Trafo":       [{t:4,o:4},{t:4,o:3},{t:4,o:3},{t:4,o:3},{t:4,o:3},{t:4,o:3},{t:4,o:3},{t:4,o:3},{t:4,o:3},{t:4,o:3},{t:4,o:3}],
+      "G1 Anti Binatang":   [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
+      "G1 Relay Internal":  [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
+      "G2 MV Aparatus":     [{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:3,o:0}],
+      "G3 Switchyard AHI":  [{t:36,o:36},{t:36,o:35},{t:36,o:35},{t:36,o:35},{t:36,o:26},{t:36,o:19},{t:36,o:19},{t:36,o:19},{t:36,o:19},{t:36,o:19},{t:36,o:19}],
+      "G4 GIS":             [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
+      "G5 Common Facility": [{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:9,o:9}],
+    },
+    T:{
+      "T1 Cable Sheath":    [{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3}],
+      "T2 SUTT AHI":        [{t:168,o:168},{t:168,o:168},{t:168,o:168},{t:168,o:168},{t:168,o:168},{t:168,o:168},{t:168,o:168},{t:168,o:168},{t:168,o:168},{t:168,o:168},{t:168,o:168}],
+      "T2 ROW B1":          [{t:1747,o:1653},{t:1747,o:825},{t:1747,o:271},{t:1747,o:1},{t:1747,o:0},{t:1747,o:0},{t:1747,o:0},{t:1747,o:0},{t:1747,o:0},{t:1747,o:0},{t:1747,o:0}],
+      "T2 Anti Binatang":   [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:7,o:7}],
+      "T2 Tapak Tower":     [{t:231,o:231},{t:231,o:231},{t:231,o:231},{t:231,o:231},{t:231,o:123},{t:231,o:123},{t:231,o:123},{t:231,o:123},{t:231,o:123},{t:231,o:123},{t:231,o:123}],
+    },
+    P:{
+      "P1 AHI Proteksi":    [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
+      "P1 Design Proteksi": [{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3}],
+      "P2 AHI Catu Daya":   [{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1}],
+      "P2 Design Catu Daya":[{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1}],
+    },
+  },
+  MADIUN:{
+    G:{
+      "G1 AHI Trafo":       [{t:10,o:10},{t:10,o:9},{t:10,o:9},{t:10,o:9},{t:10,o:4},{t:10,o:4},{t:10,o:4},{t:10,o:4},{t:10,o:4},{t:10,o:4},{t:10,o:4}],
+      "G1 Anti Binatang":   [{t:13,o:13},{t:13,o:13},{t:13,o:13},{t:13,o:13},{t:13,o:4},{t:13,o:4},{t:13,o:4},{t:13,o:4},{t:13,o:4},{t:13,o:4},{t:13,o:4}],
+      "G1 Relay Internal":  [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
+      "G2 MV Aparatus":     [{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:3,o:1},{t:6,o:1},{t:6,o:1},{t:6,o:1},{t:6,o:1},{t:6,o:1}],
+      "G3 Switchyard AHI":  [{t:54,o:54},{t:54,o:54},{t:54,o:54},{t:54,o:54},{t:54,o:38},{t:54,o:27},{t:54,o:27},{t:54,o:27},{t:54,o:27},{t:54,o:27},{t:55,o:27}],
+      "G4 GIS":             [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
+      "G5 Common Facility": [{t:15,o:15},{t:15,o:15},{t:15,o:15},{t:15,o:15},{t:15,o:15},{t:15,o:15},{t:15,o:15},{t:15,o:15},{t:15,o:15},{t:15,o:15},{t:18,o:17}],
+    },
+    T:{
+      "T1 Cable Sheath":    [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
+      "T2 SUTT AHI":        [{t:75,o:75},{t:75,o:75},{t:75,o:75},{t:75,o:75},{t:75,o:61},{t:75,o:61},{t:75,o:61},{t:75,o:61},{t:75,o:62},{t:75,o:62},{t:75,o:62}],
+      "T2 ROW B1":          [{t:2684,o:2191},{t:2684,o:1061},{t:2684,o:528},{t:2684,o:0},{t:2684,o:0},{t:2684,o:0},{t:2684,o:0},{t:2684,o:0},{t:2684,o:0},{t:2684,o:0},{t:2684,o:0}],
+      "T2 Anti Binatang":   [{t:13,o:13},{t:13,o:13},{t:13,o:13},{t:13,o:13},{t:13,o:4},{t:13,o:4},{t:13,o:4},{t:13,o:4},{t:13,o:4},{t:13,o:4},{t:194,o:194}],
+      "T2 Tapak Tower":     [{t:11,o:11},{t:11,o:11},{t:11,o:11},{t:11,o:11},{t:11,o:10},{t:11,o:10},{t:11,o:10},{t:11,o:10},{t:11,o:10},{t:11,o:10},{t:11,o:10}],
+    },
+    P:{
+      "P1 AHI Proteksi":    [{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1}],
+      "P1 Design Proteksi": [{t:25,o:23},{t:25,o:23},{t:25,o:23},{t:25,o:23},{t:25,o:19},{t:25,o:15},{t:25,o:15},{t:25,o:15},{t:25,o:15},{t:25,o:15},{t:25,o:15}],
+      "P2 AHI Catu Daya":   [{t:3,o:2},{t:3,o:2},{t:3,o:2},{t:3,o:2},{t:3,o:2},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1}],
+      "P2 Design Catu Daya":[{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
+    },
+  },
+  PROBOLINGGO:{
+    G:{
+      "G1 AHI Trafo":       [{t:2,o:2},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:2},{t:2,o:2}],
+      "G1 Anti Binatang":   [{t:18,o:18},{t:18,o:18},{t:18,o:18},{t:18,o:18},{t:18,o:18},{t:18,o:18},{t:18,o:18},{t:18,o:18},{t:18,o:18},{t:18,o:12},{t:18,o:12}],
+      "G1 Relay Internal":  [{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1}],
+      "G2 MV Aparatus":     [{t:12,o:12},{t:12,o:12},{t:12,o:12},{t:12,o:12},{t:12,o:12},{t:12,o:12},{t:12,o:12},{t:12,o:12},{t:12,o:12},{t:12,o:0},{t:16,o:0}],
+      "G3 Switchyard AHI":  [{t:150,o:150},{t:150,o:148},{t:150,o:148},{t:150,o:148},{t:150,o:148},{t:150,o:148},{t:150,o:148},{t:150,o:148},{t:150,o:148},{t:150,o:129},{t:150,o:129}],
+      "G4 GIS":             [{t:1,o:1},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0}],
+      "G5 Common Facility": [{t:9,o:9},{t:9,o:9},{t:9,o:9},{t:9,o:9},{t:9,o:9},{t:9,o:9},{t:9,o:9},{t:9,o:9},{t:9,o:9},{t:9,o:9},{t:9,o:8}],
+    },
+    T:{
+      "T1 Cable Sheath":    [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
+      "T2 SUTT AHI":        [{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111}],
+      "T2 ROW B1":          [{t:10758,o:9072},{t:10758,o:5665},{t:10758,o:3515},{t:10758,o:1505},{t:10758,o:1505},{t:10758,o:1505},{t:10758,o:1505},{t:10758,o:1505},{t:10758,o:1505},{t:10758,o:1505},{t:10758,o:1505}],
+      "T2 Anti Binatang":   [{t:18,o:18},{t:18,o:18},{t:18,o:18},{t:18,o:18},{t:18,o:18},{t:18,o:18},{t:18,o:18},{t:18,o:18},{t:18,o:18},{t:18,o:12},{t:641,o:641}],
+      "T2 Tapak Tower":     [{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:0},{t:8,o:0},{t:8,o:0},{t:8,o:0},{t:8,o:0},{t:8,o:0}],
+    },
+    P:{
+      "P1 AHI Proteksi":    [{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5}],
+      "P1 Design Proteksi": [{t:45,o:44},{t:45,o:44},{t:45,o:44},{t:45,o:44},{t:45,o:43},{t:45,o:43},{t:45,o:43},{t:45,o:43},{t:45,o:43},{t:45,o:43},{t:45,o:43}],
+      "P2 AHI Catu Daya":   [{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2}],
+      "P2 Design Catu Daya":[{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2}],
+    },
+  },
+};
+// ============================================================
+// END DATA SECTION
+// ============================================================
+
+const GROUP_META={
+  G:{label:"G – Gardu Induk",badge_bg:"#E6F1FB",badge_txt:"#0C447C",bar:"#185FA5"},
+  T:{label:"T – Transmisi",badge_bg:"#FCEBEB",badge_txt:"#791F1F",bar:"#E24B4A"},
+  P:{label:"P – Proteksi & Catu Daya",badge_bg:"#E1F5EE",badge_txt:"#085041",bar:"#0F6E56"},
+};
+const UPTS=Object.keys(D);
+let activeUpt="GRESIK";
+const lineCharts={G:null,T:null,P:null};
+
+function pct(o,t){if(!t)return 100;return Math.round((1-o/t)*100)}
+function oColor(o,t){if(!t)return"#a0a09a";if(o===0)return"#0F6E56";if(o===t)return"#E24B4A";return"#BA7517"}
+function groupAgg(upt,grp,wi){let t=0,o=0;Object.values(D[upt][grp]).forEach(a=>{t+=a[wi].t;o+=a[wi].o});return{t,o}}
+
+function renderUtabs(){
+  document.getElementById("utabs").innerHTML=UPTS.map(u=>
+    `<button class="utab${u===activeUpt?" on":""}" onclick="setUpt('${u}')">${u}</button>`
+  ).join("");
+}
+
+function renderSummary(){
+  let totT=0,totO=0,prevO=0;
+  const n=WL.length-1;
+  ["G","T","P"].forEach(g=>{
+    const cur=groupAgg(activeUpt,g,n);
+    const prv=groupAgg(activeUpt,g,n-1);
+    totT+=cur.t;totO+=cur.o;prevO+=prv.o;
+  });
+  const delta=prevO-totO;
+  const dStr=delta>0?`<span style="color:#0F6E56">▼ ${delta.toLocaleString()} dari sebelumnya</span>`:
+             delta<0?`<span style="color:#E24B4A">▲ ${Math.abs(delta).toLocaleString()} dari sebelumnya</span>`:
+             `<span style="color:#a0a09a">sama seperti sebelumnya</span>`;
+  document.getElementById("srow").innerHTML=`
+    <div class="sc"><div class="slb">Total Target</div><div class="sv">${totT.toLocaleString()}</div><div class="ssub">awal 2026</div></div>
+    <div class="sc"><div class="slb">Open saat ini</div><div class="sv" style="color:${totO>0?"#E24B4A":"#0F6E56"}">${totO.toLocaleString()}</div><div class="ssub">${dStr}</div></div>
+    <div class="sc"><div class="slb">Progress</div><div class="sv" style="color:#0F6E56">${pct(totO,totT)}%</div><div class="ssub">${(totT-totO).toLocaleString()} anomali selesai</div></div>`;
+}
+
+function renderPanels(){
+  const n=WL.length-1;
+  document.getElementById("panels").innerHTML=["G","T","P"].map(gKey=>{
+    const gm=GROUP_META[gKey];
+    const rows=Object.entries(D[activeUpt][gKey]).map(([name,arr])=>{
+      const t=arr[n].t,o=arr[n].o;
+      if(!t&&!o)return"";
+      const p=pct(o,t),oc=oColor(o,t);
+      const d=arr[n-1].o-o;
+      const dStr=d>0?`<span class="delta" style="color:#0F6E56">▼${d}</span>`:d<0?`<span class="delta" style="color:#E24B4A">▲${Math.abs(d)}</span>`:"";
+      return `<div class="prow">
+        <div class="prow-top">
+          <span class="pname">${name}</span>
+          <span class="pnums" style="color:${oc}">${o.toLocaleString()} / ${t.toLocaleString()}${dStr}</span>
+          <span class="ppct" style="color:${oc}">${p}%</span>
+        </div>
+        <div class="pbar-bg"><div class="pbar-f" style="width:${p}%;background:${gm.bar}"></div></div>
+      </div>`;
+    }).filter(Boolean).join("");
+    const agg=groupAgg(activeUpt,gKey,n);
+    return `<div class="panel">
+      <div class="ptitle">
+        <span class="pbadge" style="background:${gm.badge_bg};color:${gm.badge_txt}">${gKey}</span>
+        <span style="color:#6b6b6b;font-size:11px">${gm.label.split("–")[1].trim()}</span>
+        <span style="margin-left:auto;font-size:11px;font-weight:600;color:${oColor(agg.o,agg.t)}">${pct(agg.o,agg.t)}% selesai</span>
+      </div>
+      ${rows||'<div style="font-size:11px;color:#a0a09a;padding:6px 0">Tidak ada anomali</div>'}
+    </div>`;
+  }).join("");
+}
+
+function renderChartsRow(){
+  document.getElementById("charts-row").innerHTML=["G","T","P"].map(gKey=>`
+    <div class="chart-box">
+      <div class="cbtitle">Tren ${GROUP_META[gKey].label.split("–")[0].trim()}</div>
+      <div class="ch-wrap"><canvas id="lc_${gKey}" role="img" aria-label="Tren ${gKey}"></canvas></div>
+    </div>`).join("");
+}
+
+function renderLineCharts(){
+  ["G","T","P"].forEach(gKey=>{
+    const gm=GROUP_META[gKey];
+    const aggT=WL.map((_,wi)=>groupAgg(activeUpt,gKey,wi).t);
+    const aggO=WL.map((_,wi)=>groupAgg(activeUpt,gKey,wi).o);
+    if(lineCharts[gKey])lineCharts[gKey].destroy();
+    const ctx=document.getElementById("lc_"+gKey).getContext("2d");
+    lineCharts[gKey]=new Chart(ctx,{
+      type:"line",
+      data:{labels:WL,datasets:[
+        {label:"Target",data:aggT,borderColor:"#185FA5",borderWidth:1.5,borderDash:[4,3],pointRadius:3,pointBackgroundColor:"#185FA5",tension:0.2,fill:false},
+        {label:"Open",data:aggO,borderColor:gm.bar,backgroundColor:gm.bar+"18",borderWidth:2.5,
+          pointRadius:WL.map((_,i)=>i===WL.length-1?7:4),
+          pointBackgroundColor:WL.map((_,i)=>i===WL.length-1?"#fff":gm.bar),
+          pointBorderColor:WL.map((_,i)=>i===WL.length-1?gm.bar:"transparent"),
+          pointBorderWidth:WL.map((_,i)=>i===WL.length-1?2.5:0),
+          tension:0.2,fill:true}
+      ]},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{
+          const v=c.parsed.y,t=aggT[c.dataIndex];
+          return c.dataset.label==="Open"?` Open: ${v.toLocaleString()} (${pct(v,t)}%)`:` Target: ${v.toLocaleString()}`;
+        }}}},
+        scales:{
+          x:{grid:{color:"rgba(128,128,128,0.08)"},ticks:{font:{size:10},color:"#888",autoSkip:false,maxRotation:40}},
+          y:{grid:{color:"rgba(128,128,128,0.08)"},ticks:{font:{size:10},color:"#888",callback:v=>v>=1000?(v/1000).toFixed(1)+"k":v}}
+        }
+      }
+    });
+  });
+}
+
+function setUpt(u){activeUpt=u;renderAll();}
+function renderAll(){renderUtabs();renderSummary();renderPanels();renderChartsRow();renderLineCharts();}
+document.getElementById("last-update-top").textContent="Data: "+LAST_UPDATE;
+renderAll();
+</script>
+</body>
+</html>
