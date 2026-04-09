@@ -45,7 +45,6 @@
   .urow { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 20px; }
   .utab { padding: 6px 16px; font-size: 13px; border: 0.5px solid var(--border2); border-radius: var(--radius); background: transparent; color: var(--text2); cursor: pointer; transition: all 0.15s; }
   .utab.on { background: #E6F1FB; color: #0C447C; border-color: #185FA5; font-weight: 600; }
-  .utab.total-tab.on { background: #EEEDFE; color: #3C3489; border-color: #534AB7; }
   .utab:hover:not(.on) { background: var(--bg2); }
   .srow { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; margin-bottom: 20px; }
   .sc { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; }
@@ -80,6 +79,39 @@
   @media (max-width: 480px) {
     .srow { grid-template-columns: 1fr; }
   }
+
+  .rekap-section { margin-bottom: 20px; }
+  .rekap-header { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
+  .rekap-note { font-size: 11px; color: var(--text3); background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 8px 12px; margin-bottom: 14px; line-height: 1.6; }
+  .rekap-note strong { color: var(--text2); }
+  .rekap-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; margin-bottom: 14px; }
+  .rekap-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; }
+  .rekap-card-title { display: flex; align-items: center; gap: 7px; margin-bottom: 12px; }
+  .rekap-upt { font-size: 11px; font-weight: 600; color: var(--text2); }
+  .rekap-pct-big { font-size: 22px; font-weight: 700; }
+  .rekap-bar-bg { height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; margin: 6px 0 8px; }
+  .rekap-bar-f { height: 100%; border-radius: 3px; }
+  .rekap-detail { font-size: 10px; color: var(--text3); line-height: 1.7; }
+  .rekap-total { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px 18px; display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; }
+  .rekap-total-item { }
+  .rekap-total-lbl { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .rekap-total-val { font-size: 18px; font-weight: 700; }
+  @media (max-width: 768px) {
+    .rekap-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .rekap-total { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  }
+  @media (max-width: 480px) {
+    .rekap-grid { grid-template-columns: 1fr; }
+  }
+
+
+  .nav-tabs { display:flex; gap:0; margin-bottom:20px; border-bottom:0.5px solid var(--border); }
+  .nav-tab { padding:9px 22px; font-size:13px; font-weight:500; border:none; background:transparent;
+             color:var(--text3); cursor:pointer; border-bottom:2px solid transparent;
+             margin-bottom:-0.5px; transition:all 0.15s; }
+  .nav-tab.on { color:var(--blue); border-bottom-color:var(--blue); }
+  .nav-tab:hover:not(.on) { color:var(--text2); background:var(--bg2); }
+
 </style>
 </head>
 <body>
@@ -92,15 +124,21 @@
 </div>
 
 <div class="container">
-  <div class="urow" id="utabs"></div>
-  <div class="srow" id="srow"></div>
-  <div class="panels" id="panels"></div>
-  <div class="lgrow">
-    <span><span class="lgdot" style="background:#185FA5"></span>Target</span>
-    <span><span class="lgdot" style="background:#E24B4A"></span>Open (pending)</span>
-    <span style="color:var(--text3)">· titik terakhir = data terkini</span>
+
+  <div class="nav-tabs" id="nav-tabs"></div>
+  <div id="view-rekap"></div>
+  <div id="view-upt" style="display:none">
+    <div class="urow" id="utabs"></div>
+    <div class="srow" id="srow"></div>
+    <div class="panels" id="panels"></div>
+    <div style="display:flex;flex-wrap:wrap;gap:12px;font-size:11px;color:var(--text3);margin-bottom:6px;padding-top:4px">
+      <span><span style="width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:4px;background:#185FA5"></span>Target</span>
+      <span><span style="width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:4px;background:#E24B4A"></span>Open (pending)</span>
+      <span>· nilai grafik: ROW B1 ÷ 100 (normalisasi bobot)</span>
+    </div>
+    <div class="charts-row" id="charts-row"></div>
   </div>
-  <div class="charts-row" id="charts-row"></div>
+
   <div class="footer">
     PT PLN Persero · Unit Induk Transmisi Jawa Bagian Madura · Dashboard Common Enemy 2026<br>
     Format: Open / Target · % = progress penyelesaian · Warna: <span style="color:#0F6E56">hijau=tuntas</span> · <span style="color:#BA7517">oranye=sebagian</span> · <span style="color:#E24B4A">merah=belum</span>
@@ -270,35 +308,26 @@ const GROUP_META={
   T:{label:"T – Transmisi",badge_bg:"#FCEBEB",badge_txt:"#791F1F",bar:"#E24B4A"},
   P:{label:"P – Proteksi & Catu Daya",badge_bg:"#E1F5EE",badge_txt:"#085041",bar:"#0F6E56"},
 };
-const UPTS_REAL=Object.keys(D);
-const UPTS=[...UPTS_REAL,"TOTAL UIT JBM"];
+const UPTS=Object.keys(D);
 let activeUpt="GRESIK";
 const lineCharts={G:null,T:null,P:null};
 
 function pct(o,t){if(!t)return 100;return Math.round((1-o/t)*100)}
 function oColor(o,t){if(!t)return"#a0a09a";if(o===0)return"#0F6E56";if(o===t)return"#E24B4A";return"#BA7517"}
-function groupAgg(upt,grp,wi){
-  if(upt==="TOTAL UIT JBM"){
-    let t=0,o=0;
-    UPTS_REAL.forEach(u=>Object.values(D[u][grp]).forEach(a=>{t+=a[wi].t;o+=a[wi].o}));
-    return{t,o};
-  }
-  let t=0,o=0;Object.values(D[upt][grp]).forEach(a=>{t+=a[wi].t;o+=a[wi].o});return{t,o};
-}
+function groupAgg(upt,grp,wi){let t=0,o=0;Object.values(D[upt][grp]).forEach(a=>{t+=a[wi].t;o+=a[wi].o});return{t,o}}
 
 function renderUtabs(){
-  document.getElementById("utabs").innerHTML=UPTS.map(u=>{
-    const isTot=u==="TOTAL UIT JBM";
-    return `<button class="utab${isTot?" total-tab":""}${u===activeUpt?" on":""}" onclick="setUpt('${u}')">${u}</button>`;
-  }).join("");
+  document.getElementById("utabs").innerHTML=UPTS.map(u=>
+    `<button class="utab${u===activeUpt?" on":""}" onclick="setUpt('${u}')">${u}</button>`
+  ).join("");
 }
 
 function renderSummary(){
   let totT=0,totO=0,prevO=0;
   const n=WL.length-1;
   ["G","T","P"].forEach(g=>{
-    const cur=groupAgg(activeUpt,g,n);
-    const prv=groupAgg(activeUpt,g,n-1);
+    const cur=groupAggAdj(activeUpt,g,n);
+    const prv=groupAggAdj(activeUpt,g,n-1);
     totT+=cur.t;totO+=cur.o;prevO+=prv.o;
   });
   const delta=prevO-totO;
@@ -312,7 +341,6 @@ function renderSummary(){
 }
 
 function renderPanels(){
-  if(activeUpt==="TOTAL UIT JBM"){ renderTotalPanels(); return; }
   const n=WL.length-1;
   document.getElementById("panels").innerHTML=["G","T","P"].map(gKey=>{
     const gm=GROUP_META[gKey];
@@ -351,11 +379,25 @@ function renderChartsRow(){
     </div>`).join("");
 }
 
+function groupAggAdj(upt, grp, wi) {
+  // Aggregate dengan ROW B1 dinormalisasi ÷ 100
+  let t = 0, o = 0;
+  Object.entries(D[upt][grp]).forEach(([name, arr]) => {
+    t += adjVal(name, arr[wi].t);
+    o += adjVal(name, arr[wi].o);
+  });
+  return { t, o };
+}
+
 function renderLineCharts(){
   ["G","T","P"].forEach(gKey=>{
     const gm=GROUP_META[gKey];
-    const aggT=WL.map((_,wi)=>groupAgg(activeUpt,gKey,wi).t);
-    const aggO=WL.map((_,wi)=>groupAgg(activeUpt,gKey,wi).o);
+    // Gunakan nilai adjusted (ROW ÷ 100) untuk grafik
+    const aggT=WL.map((_,wi)=>Math.round(groupAggAdj(activeUpt,gKey,wi).t));
+    const aggO=WL.map((_,wi)=>Math.round(groupAggAdj(activeUpt,gKey,wi).o));
+    // Raw values untuk tooltip
+    const rawT=WL.map((_,wi)=>groupAgg(activeUpt,gKey,wi).t);
+    const rawO=WL.map((_,wi)=>groupAgg(activeUpt,gKey,wi).o);
     if(lineCharts[gKey])lineCharts[gKey].destroy();
     const ctx=document.getElementById("lc_"+gKey).getContext("2d");
     lineCharts[gKey]=new Chart(ctx,{
@@ -371,10 +413,23 @@ function renderLineCharts(){
       ]},
       options:{
         responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{
-          const v=c.parsed.y,t=aggT[c.dataIndex];
-          return c.dataset.label==="Open"?` Open: ${v.toLocaleString()} (${pct(v,t)}%)`:` Target: ${v.toLocaleString()}`;
-        }}}},
+        plugins:{
+          legend:{display:false},
+          tooltip:{callbacks:{label:c=>{
+            const wi=c.dataIndex;
+            const v=c.parsed.y,t=aggT[wi];
+            const rv=rawO[wi],rt=rawT[wi];
+            if(c.dataset.label==="Open"){
+              // Cek apakah grup ini punya ROW B1
+              const hasRow=Object.keys(D[activeUpt][gKey]).some(n=>ROW_KEYS.includes(n)&&D[activeUpt][gKey][n][wi].t>0);
+              if(hasRow) return [` Open (adj): ${v.toLocaleString()} (${pct(v,t)}%)`,` Raw: ${rv.toLocaleString()} pohon termasuk ROW`];
+              return ` Open: ${v.toLocaleString()} (${pct(v,t)}%)`;
+            }
+            const hasRow=Object.keys(D[activeUpt][gKey]).some(n=>ROW_KEYS.includes(n)&&D[activeUpt][gKey][n][wi].t>0);
+            if(hasRow) return [` Target (adj): ${v.toLocaleString()}`,` Raw: ${rt.toLocaleString()} pohon termasuk ROW`];
+            return ` Target: ${v.toLocaleString()}`;
+          }}}
+        },
         scales:{
           x:{grid:{color:"rgba(128,128,128,0.08)"},ticks:{font:{size:10},color:"#888",autoSkip:false,maxRotation:40}},
           y:{grid:{color:"rgba(128,128,128,0.08)"},ticks:{font:{size:10},color:"#888",callback:v=>v>=1000?(v/1000).toFixed(1)+"k":v}}
@@ -385,39 +440,133 @@ function renderLineCharts(){
 }
 
 
-function renderTotalPanels(){
-  const n=WL.length-1;
-  document.getElementById("panels").innerHTML=["G","T","P"].map(gKey=>{
-    const gm=GROUP_META[gKey];
-    const rows=UPTS_REAL.map(upt=>{
-      const cur=groupAgg(upt,gKey,n);
-      const prv=groupAgg(upt,gKey,n-1);
-      if(!cur.t&&!cur.o)return"";
-      const p=pct(cur.o,cur.t),oc=oColor(cur.o,cur.t);
-      const d=prv.o-cur.o;
-      const dStr=d>0?`<span class="delta" style="color:#0F6E56">▼${d}</span>`:d<0?`<span class="delta" style="color:#E24B4A">▲${Math.abs(d)}</span>`:"";
-      return `<div class="prow">
-        <div class="prow-top">
-          <span class="pname" style="font-weight:500">${upt}</span>
-          <span class="pnums" style="color:${oc}">${cur.o.toLocaleString()} / ${cur.t.toLocaleString()}${dStr}</span>
-          <span class="ppct" style="color:${oc}">${p}%</span>
-        </div>
-        <div class="pbar-bg"><div class="pbar-f" style="width:${p}%;background:${gm.bar}"></div></div>
-      </div>`;
-    }).filter(Boolean).join("");
-    const tot=groupAgg("TOTAL UIT JBM",gKey,n);
-    return `<div class="panel">
-      <div class="ptitle">
-        <span class="pbadge" style="background:${gm.badge_bg};color:${gm.badge_txt}">${gKey}</span>
-        <span style="color:#6b6b6b;font-size:11px">${gm.label.split("–")[1].trim()}</span>
-        <span style="margin-left:auto;font-size:11px;font-weight:600;color:${oColor(tot.o,tot.t)}">${pct(tot.o,tot.t)}% selesai</span>
-      </div>
-      ${rows||'<div style="font-size:11px;color:#a0a09a;padding:6px 0">Tidak ada anomali</div>'}
-    </div>`;
-  }).join("");
+const ROW_KEYS = ["T2 ROW B1"]; // kategori yang dibagi 100 untuk normalisasi bobot
+const ROW_DIVISOR = 100;
+
+function adjVal(name, val) {
+  return ROW_KEYS.includes(name) ? val / ROW_DIVISOR : val;
 }
+
+function calcProgress(upt) {
+  // Hitung total target & open dengan ROW B1 dinormalisasi
+  let totT = 0, totO = 0;
+  ["G","T","P"].forEach(g => {
+    Object.entries(D[upt][g]).forEach(([name, arr]) => {
+      const n = WL.length - 1;
+      totT += adjVal(name, arr[n].t);
+      totO += adjVal(name, arr[n].o);
+    });
+  });
+  const n = WL.length - 1;
+  // Raw values (tanpa normalisasi) untuk display
+  let rawT = 0, rawO = 0, rawRow = 0, rawRowO = 0;
+  ["G","T","P"].forEach(g => {
+    Object.entries(D[upt][g]).forEach(([name, arr]) => {
+      rawT += arr[n].t;
+      rawO += arr[n].o;
+      if (ROW_KEYS.includes(name)) { rawRow += arr[n].t; rawRowO += arr[n].o; }
+    });
+  });
+  return {
+    pct: totT > 0 ? Math.round((1 - totO / totT) * 100) : 100,
+    adjT: Math.round(totT), adjO: Math.round(totO),
+    rawT, rawO, rawRow, rawRowO,
+    nonRowT: rawT - rawRow, nonRowO: rawO - rawRowO
+  };
+}
+
+function renderRekap() {
+  const n = WL.length - 1;
+  const results = UPTS.map(upt => ({ upt, ...calcProgress(upt) }));
+  results.sort((a, b) => b.pct - a.pct);
+
+  // Total all UPT
+  let totalRawT = 0, totalRawO = 0, totalAdjT = 0, totalAdjO = 0;
+  results.forEach(r => { totalRawT += r.rawT; totalRawO += r.rawO; totalAdjT += r.adjT; totalAdjO += r.adjO; });
+  const totalPct = totalAdjT > 0 ? Math.round((1 - totalAdjO / totalAdjT) * 100) : 100;
+
+  const cards = results.map(r => {
+    const barColor = r.pct >= 80 ? '#0F6E56' : r.pct >= 50 ? '#BA7517' : '#E24B4A';
+    return `<div class="rekap-card">
+      <div class="rekap-card-title">
+        <span class="rekap-upt">${r.upt}</span>
+        <span class="rekap-pct-big" style="margin-left:auto;color:${barColor}">${r.pct}%</span>
+      </div>
+      <div class="rekap-bar-bg"><div class="rekap-bar-f" style="width:${r.pct}%;background:${barColor}"></div></div>
+      <div class="rekap-detail">
+        Open: <strong style="color:var(--text2)">${r.rawO.toLocaleString()}</strong> / Target: <strong style="color:var(--text2)">${r.rawT.toLocaleString()}</strong><br>
+        Non-ROW: ${r.nonRowO.toLocaleString()} / ${r.nonRowT.toLocaleString()}<br>
+        ROW B1: ${r.rawRowO.toLocaleString()} / ${r.rawRow.toLocaleString()} pohon
+      </div>
+    </div>`;
+  }).join('');
+
+  const totalBarColor = totalPct >= 80 ? '#0F6E56' : totalPct >= 50 ? '#BA7517' : '#E24B4A';
+
+  document.getElementById("view-rekap").innerHTML = `
+    <div class="rekap-header">
+      Rekap Total 6 UPT — ${LAST_UPDATE}
+      <span style="font-size:11px;font-weight:400;color:var(--text3)">diurutkan dari progress tertinggi</span>
+    </div>
+    <div class="rekap-note">
+      <strong>Catatan perhitungan %:</strong> Progress dihitung dengan <strong>normalisasi bobot ROW B1</strong> (dibagi ${ROW_DIVISOR}).
+      ROW B1 adalah anomali vegetasi yang satuannya <em>pohon</em> (ribuan), sedangkan kategori lain satuannya <em>unit/titik</em> (puluhan).
+      Tanpa normalisasi, ROW B1 mendominasi 77–91% total target sehingga progress kategori lain tidak terbaca.
+      Dengan dibagi ${ROW_DIVISOR}, setiap 100 pohon ROW dihitung setara 1 unit anomali — sehingga % mencerminkan kondisi riil semua kategori secara proporsional.
+    </div>
+    <div class="rekap-grid">${cards}</div>
+    <div class="rekap-total">
+      <div class="rekap-total-item">
+        <div class="rekap-total-lbl">Progress keseluruhan</div>
+        <div class="rekap-total-val" style="color:${totalBarColor}">${totalPct}%</div>
+      </div>
+      <div class="rekap-total-item">
+        <div class="rekap-total-lbl">Total open</div>
+        <div class="rekap-total-val" style="color:#E24B4A">${totalRawO.toLocaleString()}</div>
+      </div>
+      <div class="rekap-total-item">
+        <div class="rekap-total-lbl">Total target</div>
+        <div class="rekap-total-val">${totalRawT.toLocaleString()}</div>
+      </div>
+      <div class="rekap-total-item">
+        <div class="rekap-total-lbl">Total selesai</div>
+        <div class="rekap-total-val" style="color:#0F6E56">${(totalRawT - totalRawO).toLocaleString()}</div>
+      </div>
+    </div>
+  `;
+}
+
 function setUpt(u){activeUpt=u;renderAll();}
-function renderAll(){renderUtabs();renderSummary();renderPanels();renderChartsRow();renderLineCharts();}
+
+/* ── Navigation ── */
+let activeView = 'rekap'; // 'rekap' | 'upt'
+
+function renderNavTabs(){
+  document.getElementById('nav-tabs').innerHTML = [
+    {key:'rekap', label:'Rekap UIT JBM'},
+    {key:'upt',   label:'Per UPT'}
+  ].map(t => `<button class="nav-tab${t.key===activeView?' on':''}" onclick="setView('${t.key}')">${t.label}</button>`).join('');
+}
+
+function setView(v){
+  activeView = v;
+  document.getElementById('view-rekap').style.display = v==='rekap' ? '' : 'none';
+  document.getElementById('view-upt').style.display   = v==='upt'  ? '' : 'none';
+  renderNavTabs();
+  if(v==='upt') renderUtabs();
+}
+
+function renderAll(){
+  renderNavTabs();
+  renderRekap();
+  if(activeView==='upt'){
+    renderUtabs();
+    renderSummary();
+    renderPanels();
+    renderChartsRow();
+    renderLineCharts();
+  }
+}
 document.getElementById("last-update-top").textContent="Data: "+LAST_UPDATE;
 renderAll();
 </script>
