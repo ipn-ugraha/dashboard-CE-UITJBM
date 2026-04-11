@@ -4,294 +4,118 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Common Enemy — UIT JBM 2026</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
-:root {
-  --bg0: #080c10;
-  --bg1: #0d1117;
-  --bg2: #161b22;
-  --bg3: #1f2937;
-  --bg4: #273344;
-  --line: rgba(255,255,255,0.07);
-  --line2: rgba(255,255,255,0.13);
-  --text: #e6edf3;
-  --text2: #8b949e;
-  --text3: #484f58;
-  --accent: #58a6ff;
-  --accent2: #1f6feb;
-  --green: #3fb950;
-  --green2: #238636;
-  --red: #f85149;
-  --red2: #da3633;
-  --amber: #d29922;
-  --amber2: #9e6a03;
-  --purple: #a371f7;
-  --teal: #39d353;
-  --font-display: 'Syne', sans-serif;
-  --font-mono: 'DM Mono', monospace;
-}
+:root{--bg0:#080c10;--bg1:#0d1117;--bg2:#161b22;--bg3:#1f2937;--line:rgba(255,255,255,0.07);--line2:rgba(255,255,255,0.13);--text:#e6edf3;--text2:#8b949e;--text3:#484f58;--accent:#58a6ff;--accent2:#1f6feb;--green:#3fb950;--red:#f85149;--amber:#d29922;--purple:#a371f7;--font-d:'Syne',sans-serif;--font-m:'DM Mono',monospace;--r:8px;--rl:12px;}
 *{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-body{
-  font-family: var(--font-display);
-  background: var(--bg0);
-  color: var(--text);
-  min-height: 100vh;
-  position: relative;
-  overflow-x: hidden;
-}
-
-/* ── Grid background ── */
-body::before {
-  content:'';
-  position:fixed;
-  inset:0;
-  background-image:
-    linear-gradient(rgba(88,166,255,0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(88,166,255,0.03) 1px, transparent 1px);
-  background-size: 40px 40px;
-  pointer-events:none;
-  z-index:0;
-}
-
-/* ── Glow orbs ── */
-body::after {
-  content:'';
-  position:fixed;
-  top:-200px; left:-200px;
-  width:600px; height:600px;
-  background: radial-gradient(circle, rgba(31,111,235,0.08) 0%, transparent 70%);
-  pointer-events:none;
-  z-index:0;
-}
-
-.container { max-width:1280px; margin:0 auto; padding:0 24px 48px; position:relative; z-index:1; }
-
-/* ── Topbar ── */
-.topbar {
-  position: sticky; top:0; z-index:100;
-  background: rgba(8,12,16,0.85);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--line);
-  padding: 0 24px;
-  display: flex; align-items: center; gap: 0;
-}
-.topbar-inner { max-width:1280px; margin:0 auto; width:100%; display:flex; align-items:center; gap:16px; height:52px; }
-.logo-mark {
-  width: 28px; height: 28px;
-  background: var(--accent2);
-  border-radius: 6px;
-  display: flex; align-items:center; justify-content:center;
-  font-size:11px; font-weight:800; color:#fff; letter-spacing:-0.5px;
-  flex-shrink:0;
-}
-.logo-text { font-size:14px; font-weight:700; letter-spacing:0.02em; color: var(--text); }
-.logo-sub { font-size:11px; color: var(--text3); margin-left:2px; font-family: var(--font-mono); }
-.topbar-right { margin-left:auto; display:flex; align-items:center; gap:16px; }
-.live-dot {
-  width:7px; height:7px; border-radius:50%; background: var(--green);
-  box-shadow: 0 0 6px var(--green);
-  animation: pulse 2s ease-in-out infinite;
-}
-@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.6;transform:scale(0.85)} }
-.last-update { font-family: var(--font-mono); font-size:11px; color: var(--text3); }
-
-/* ── Nav tabs ── */
-.nav-wrap { padding: 24px 0 0; margin-bottom: 24px; }
-.nav-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); padding-bottom: 0; }
-.nav-tab {
-  padding: 10px 20px; font-size:13px; font-weight:600; font-family:var(--font-display);
-  border: none; background: transparent; color: var(--text3); cursor: pointer;
-  border-bottom: 2px solid transparent; margin-bottom:-1px;
-  letter-spacing:0.03em; transition: all 0.2s;
-}
-.nav-tab:hover:not(.on) { color: var(--text2); }
-.nav-tab.on { color: var(--accent); border-bottom-color: var(--accent); }
-
-/* ── Section heading ── */
-.section-head {
-  display: flex; align-items: baseline; gap: 12px;
-  margin-bottom: 16px; margin-top: 32px;
-}
-.section-head:first-child { margin-top: 0; }
-.section-title { font-size:13px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--text2); }
-.section-rule { flex:1; height:1px; background:var(--line); }
-.section-meta { font-family:var(--font-mono); font-size:10px; color:var(--text3); }
-
-/* ── Stat cards ── */
-.stat-row { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:24px; }
-.stat-card {
-  background: var(--bg2);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 16px 18px;
-  position: relative; overflow:hidden;
-  transition: border-color 0.2s;
-}
-.stat-card:hover { border-color: var(--line2); }
-.stat-card::before {
-  content:''; position:absolute; top:0; left:0; right:0; height:2px;
-  background: linear-gradient(90deg, var(--accent2), transparent);
-}
-.stat-lbl { font-family:var(--font-mono); font-size:10px; color:var(--text3); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:8px; }
-.stat-val { font-size:26px; font-weight:800; line-height:1; margin-bottom:4px; }
-.stat-sub { font-family:var(--font-mono); font-size:11px; color:var(--text3); }
-
-/* ── Note box ── */
-.note-box {
-  background: rgba(88,166,255,0.05);
-  border: 1px solid rgba(88,166,255,0.15);
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-family: var(--font-mono);
-  font-size:11px; color:var(--text2); line-height:1.6;
-  margin-bottom: 20px;
-}
-.note-box strong { color: var(--accent); }
-
-/* ── UPT summary cards ── */
-.upt-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-bottom:24px; }
-.upt-card {
-  background: var(--bg2); border:1px solid var(--line);
-  border-radius:10px; padding:16px;
-  transition: border-color 0.2s, transform 0.2s;
-  cursor: default;
-}
-.upt-card:hover { border-color:var(--line2); transform:translateY(-1px); }
-.upt-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
-.upt-name { font-size:12px; font-weight:700; letter-spacing:0.06em; color:var(--text2); }
-.upt-pct { font-size:24px; font-weight:800; font-family:var(--font-display); }
-.upt-bar-bg { height:4px; background:var(--bg3); border-radius:2px; margin-bottom:10px; overflow:hidden; }
-.upt-bar-f { height:100%; border-radius:2px; transition:width 0.8s cubic-bezier(.4,0,.2,1); }
-.upt-stats { display:grid; grid-template-columns:1fr 1fr; gap:4px; }
-.upt-stat { font-family:var(--font-mono); font-size:10px; color:var(--text3); }
-.upt-stat span { color:var(--text2); }
-
-/* ── Group panels ── */
-.panels-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-bottom:24px; }
-.gpanel {
-  background:var(--bg2); border:1px solid var(--line); border-radius:10px; padding:16px;
-}
-.gpanel-head { display:flex; align-items:center; gap:8px; margin-bottom:14px; }
-.gpanel-badge {
-  font-family:var(--font-mono); font-size:11px; font-weight:500;
-  padding:2px 8px; border-radius:4px;
-}
-.gpanel-label { font-size:11px; color:var(--text3); flex:1; }
-.gpanel-pct { font-family:var(--font-mono); font-size:12px; font-weight:500; }
-.cat-row { margin-bottom:10px; }
-.cat-top { display:flex; align-items:baseline; gap:6px; margin-bottom:3px; }
-.cat-name { font-size:11px; color:var(--text2); flex:1; line-height:1.3; }
-.cat-nums { font-family:var(--font-mono); font-size:10px; white-space:nowrap; }
-.cat-pct { font-family:var(--font-mono); font-size:10px; font-weight:500; min-width:32px; text-align:right; }
-.cat-bar-bg { height:5px; background:var(--bg3); border-radius:3px; overflow:hidden; }
-.cat-bar-f { height:100%; border-radius:3px; transition:width 0.6s ease; }
-.delta-tag { font-size:9px; margin-left:3px; font-family:var(--font-mono); }
-
-/* ── Detail charts ── */
-.detail-chart-block { margin-bottom:24px; }
-.detail-chart-head { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
-.grp-badge {
-  font-family:var(--font-mono); font-size:11px; font-weight:500;
-  padding:2px 8px; border-radius:4px;
-}
-.chart-card {
-  background:var(--bg2); border:1px solid var(--line); border-radius:10px; padding:16px 18px;
-}
-.chart-legend { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:10px; }
-.chart-legend-item { display:flex; align-items:center; gap:5px; font-family:var(--font-mono); font-size:10px; color:var(--text2); }
-.legend-sq { width:8px; height:8px; border-radius:2px; flex-shrink:0; }
-.mini-prog-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(155px,1fr)); gap:6px; margin-top:12px; border-top:1px solid var(--line); padding-top:12px; }
-.mini-prog { font-size:10px; }
-.mini-prog-name { color:var(--text2); margin-bottom:3px; font-family:var(--font-mono); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.mini-prog-bar-bg { height:3px; background:var(--bg3); border-radius:2px; overflow:hidden; }
-.mini-prog-bar-f { height:100%; border-radius:2px; }
-
-/* ── UPT tabs (per-UPT view) ── */
-.upt-tabs { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:20px; }
-.utab {
-  padding:6px 14px; font-size:12px; font-weight:600; letter-spacing:0.04em;
-  border:1px solid var(--line2); border-radius:6px;
-  background:transparent; color:var(--text3); cursor:pointer;
-  font-family:var(--font-display); transition:all 0.15s;
-}
-.utab.on { background:var(--accent2); border-color:var(--accent); color:#fff; }
-.utab:hover:not(.on) { border-color:var(--line2); color:var(--text2); background:var(--bg2); }
-
-/* ── Line charts ── */
-.line-charts-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-bottom:24px; }
-.line-chart-card { background:var(--bg2); border:1px solid var(--line); border-radius:10px; padding:16px; }
-.line-chart-title { font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--text2); margin-bottom:10px; }
-.line-chart-wrap { position:relative; width:100%; height:180px; }
-
-/* ── Legend row ── */
-.leg-row { display:flex; flex-wrap:wrap; gap:14px; font-family:var(--font-mono); font-size:10px; color:var(--text3); margin-bottom:8px; }
-.leg-sq { width:8px; height:8px; border-radius:2px; display:inline-block; margin-right:4px; }
-
-/* ── Footer ── */
-.footer { text-align:center; padding:24px 0 8px; border-top:1px solid var(--line); font-family:var(--font-mono); font-size:10px; color:var(--text3); line-height:1.8; }
-
-/* ── Animations ── */
-@keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
-.anim { animation: fadeUp 0.4s ease both; }
-
-/* ── Responsive ── */
-@media(max-width:900px) {
-  .stat-row { grid-template-columns:repeat(2,1fr); }
-  .upt-grid { grid-template-columns:repeat(2,1fr); }
-  .panels-grid { grid-template-columns:1fr; }
-  .line-charts-grid { grid-template-columns:1fr; }
-}
-@media(max-width:600px) {
-  .stat-row { grid-template-columns:1fr 1fr; }
-  .upt-grid { grid-template-columns:1fr; }
-  .container { padding:0 14px 40px; }
-}
+body{font-family:var(--font-d);background:var(--bg0);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(88,166,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(88,166,255,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(8,12,16,0.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);padding:0 24px}
+.topbar-inner{max-width:1280px;margin:0 auto;width:100%;display:flex;align-items:center;gap:12px;height:52px}
+.logo-mark{width:28px;height:28px;background:var(--accent2);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;flex-shrink:0}
+.logo-text{font-size:14px;font-weight:700;color:var(--text)}
+.logo-sub{font-size:11px;color:var(--text3);font-family:var(--font-m)}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 2s ease-in-out infinite;margin-left:auto}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+.lastupd{font-family:var(--font-m);font-size:11px;color:var(--text3)}
+.container{max-width:1280px;margin:0 auto;padding:0 24px 48px;position:relative;z-index:1}
+.nav-wrap{padding:20px 0 0;margin-bottom:20px}
+.nav-tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);padding-bottom:0}
+.nav-tab{padding:9px 20px;font-size:13px;font-weight:600;font-family:var(--font-d);border:none;background:transparent;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;letter-spacing:0.03em;transition:all 0.15s}
+.nav-tab:hover:not(.on){color:var(--text2)}
+.nav-tab.on{color:var(--accent);border-bottom-color:var(--accent)}
+.sec-head{display:flex;align-items:baseline;gap:12px;margin:28px 0 14px}
+.sec-head:first-child{margin-top:0}
+.sec-title{font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text2)}
+.sec-rule{flex:1;height:1px;background:var(--line)}
+.sec-meta{font-family:var(--font-m);font-size:10px;color:var(--text3)}
+.stat-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:20px}
+.stat-card{background:var(--bg2);border:1px solid var(--line);border-radius:var(--rl);padding:16px 18px;position:relative;overflow:hidden}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent2),transparent)}
+.slb{font-family:var(--font-m);font-size:10px;color:var(--text3);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px}
+.sv{font-size:24px;font-weight:800;line-height:1;margin-bottom:4px}
+.ssub{font-family:var(--font-m);font-size:11px;color:var(--text3)}
+.note-box{background:rgba(88,166,255,0.05);border:1px solid rgba(88,166,255,0.15);border-radius:var(--r);padding:10px 14px;font-family:var(--font-m);font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:18px}
+.note-box strong{color:var(--accent)}
+.upt-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:20px}
+.upt-card{background:var(--bg2);border:1px solid var(--line);border-radius:var(--rl);padding:16px;transition:border-color 0.2s}
+.upt-card:hover{border-color:var(--line2)}
+.upt-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.upt-name{font-size:12px;font-weight:700;letter-spacing:0.06em;color:var(--text2)}
+.upt-pct{font-size:22px;font-weight:800}
+.upt-bar-bg{height:4px;background:var(--bg3);border-radius:2px;margin-bottom:10px;overflow:hidden}
+.upt-bar-f{height:100%;border-radius:2px}
+.upt-stats{display:grid;grid-template-columns:1fr 1fr;gap:3px}
+.upt-stat{font-family:var(--font-m);font-size:10px;color:var(--text3)}
+.upt-stat span{color:var(--text2)}
+.panels-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:20px}
+.gpanel{background:var(--bg2);border:1px solid var(--line);border-radius:var(--rl);padding:14px 16px}
+.gpanel-head{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.gpanel-badge{font-family:var(--font-m);font-size:11px;font-weight:500;padding:2px 8px;border-radius:4px}
+.gpanel-label{font-size:11px;color:var(--text3);flex:1}
+.gpanel-pct{font-family:var(--font-m);font-size:12px;font-weight:500}
+.cat-row{margin-bottom:10px}
+.cat-top{display:flex;align-items:baseline;gap:6px;margin-bottom:3px}
+.cat-name{font-size:11px;color:var(--text2);flex:1;line-height:1.3}
+.cat-nums{font-family:var(--font-m);font-size:10px;white-space:nowrap}
+.cat-pct{font-family:var(--font-m);font-size:10px;font-weight:500;min-width:32px;text-align:right}
+.cat-bar-bg{height:5px;background:var(--bg3);border-radius:3px;overflow:hidden}
+.cat-bar-f{height:100%;border-radius:3px}
+.delta-tag{font-size:9px;margin-left:3px;font-family:var(--font-m)}
+.upt-tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px}
+.utab{padding:6px 14px;font-size:12px;font-weight:600;letter-spacing:0.04em;border:1px solid var(--line2);border-radius:6px;background:transparent;color:var(--text3);cursor:pointer;font-family:var(--font-d);transition:all 0.15s}
+.utab.on{background:var(--accent2);border-color:var(--accent);color:#fff}
+.utab:hover:not(.on){color:var(--text2);background:var(--bg2)}
+.leg-row{display:flex;flex-wrap:wrap;gap:14px;font-family:var(--font-m);font-size:10px;color:var(--text3);margin-bottom:10px}
+.leg-sq{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:4px}
+/* Per-category charts grid */
+.charts-section{margin-bottom:24px}
+.charts-section-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.charts-grp-badge{font-family:var(--font-m);font-size:11px;font-weight:500;padding:2px 8px;border-radius:4px}
+.cat-charts-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.cat-chart-card{background:var(--bg2);border:1px solid var(--line);border-radius:var(--rl);padding:12px 14px}
+.cat-chart-top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px}
+.cat-chart-name{font-size:10px;font-weight:600;font-family:var(--font-m)}
+.cat-chart-pct{font-size:11px;font-weight:700;font-family:var(--font-m)}
+.cat-chart-wrap{position:relative;width:100%;height:110px}
+.cat-chart-foot{display:flex;justify-content:space-between;margin-top:5px;font-family:var(--font-m);font-size:9px;color:var(--text3)}
+/* Rekap detail charts */
+.detail-chart-block{margin-bottom:20px}
+.detail-chart-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.grp-badge{font-family:var(--font-m);font-size:11px;font-weight:500;padding:2px 8px;border-radius:4px}
+.chart-card{background:var(--bg2);border:1px solid var(--line);border-radius:var(--rl);padding:14px}
+.chart-legend{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px}
+.chart-legend-item{display:flex;align-items:center;gap:4px;font-family:var(--font-m);font-size:10px;color:var(--text2)}
+.legend-sq{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.mini-prog-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;margin-top:10px;border-top:1px solid var(--line);padding-top:10px}
+.mini-prog-name{font-size:10px;color:var(--text2);margin-bottom:2px;font-family:var(--font-m);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.footer{text-align:center;padding:20px 0 8px;border-top:1px solid var(--line);font-family:var(--font-m);font-size:10px;color:var(--text3);line-height:1.8}
+@media(max-width:900px){.stat-row{grid-template-columns:repeat(2,1fr)}.upt-grid{grid-template-columns:repeat(2,1fr)}.panels-grid{grid-template-columns:1fr}.cat-charts-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:500px){.stat-row{grid-template-columns:1fr 1fr}.upt-grid{grid-template-columns:1fr}.cat-charts-grid{grid-template-columns:1fr}.container{padding:0 12px 40px}}
 </style>
 </head>
 <body>
-
 <div class="topbar">
   <div class="topbar-inner">
     <div class="logo-mark">PLN</div>
-    <div>
-      <span class="logo-text">UIT JBM</span>
-      <span class="logo-sub"> / Common Enemy 2026</span>
-    </div>
-    <div class="topbar-right">
-      <div class="live-dot"></div>
-      <div class="last-update" id="last-update-top">—</div>
-    </div>
+    <div><span class="logo-text">UIT JBM</span> <span class="logo-sub">/ Common Enemy 2026</span></div>
+    <div class="live-dot"></div>
+    <div class="lastupd" id="topdate"></div>
   </div>
 </div>
-
 <div class="container">
-  <div class="nav-wrap">
-    <div class="nav-tabs" id="nav-tabs"></div>
-  </div>
-
+  <div class="nav-wrap"><div class="nav-tabs" id="nav-tabs"></div></div>
   <div id="view-rekap"></div>
-
   <div id="view-upt" style="display:none">
     <div class="upt-tabs" id="utabs"></div>
     <div id="srow-upt"></div>
     <div class="panels-grid" id="panels"></div>
-    <div class="leg-row">
-      <span><span class="leg-sq" style="background:#58a6ff"></span>Target</span>
-      <span><span class="leg-sq" style="background:#f85149"></span>Open</span>
-      <span style="color:var(--text3)">nilai grafik: ROW B1 ÷ 100</span>
-    </div>
-    <div class="line-charts-grid" id="charts-row"></div>
+    <div class="sec-head" style="margin-top:24px"><span class="sec-title">Tren per Kategori</span><span class="sec-rule"></span><span class="sec-meta">target (putus) vs open (solid)</span></div>
+    <div id="charts-area"></div>
   </div>
-
-  <div class="footer">
-    PT PLN Persero · Unit Induk Transmisi Jawa Bagian Madura<br>
-    Common Enemy Dashboard 2026 · % dihitung dengan normalisasi ROW B1 ÷ 100
-  </div>
+  <div class="footer">PT PLN Persero · Unit Induk Transmisi Jawa Bagian Madura<br>Common Enemy Dashboard 2026 · ROW B1 ÷ 100 (normalisasi bobot)</div>
 </div>
-
 <script>
 const WL = ["08 Feb","15 Feb","22 Feb","01 Mar","08 Mar","15 Mar","22 Mar","29 Mar","05 Apr","08 Apr","09 Apr","10 Apr","11 Apr","12 Apr"];
 const LAST_UPDATE = "12 April 2026";
@@ -441,801 +265,292 @@ const D = {
       "P2 Design Catu Daya":[{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2}],
     },
   },
-};
-// ============================================================
-// END DATA SECTION
-// ============================================================
+}
 
-const GROUP_META={
+const ROW_KEYS = ["T2 ROW B1"];
+const ROW_DIVISOR = 100;
+const UPTS = ["MALANG","SURABAYA","GRESIK","BALI","MADIUN","PROBOLINGGO"];
+const UPT_COLORS = {MALANG:'#58a6ff',SURABAYA:'#3fb950',GRESIK:'#f85149',BALI:'#d29922',MADIUN:'#a371f7',PROBOLINGGO:'#f0883e'};
+const CAT_COLORS = ['#58a6ff','#3fb950','#f85149','#d29922','#a371f7','#f0883e','#39d353','#ff7b72'];
+const GROUP_META = {
   G:{label:"G – Gardu Induk",badge_bg:"rgba(88,166,255,0.12)",badge_txt:"#58a6ff",bar:"#58a6ff"},
   T:{label:"T – Transmisi",badge_bg:"rgba(248,81,73,0.12)",badge_txt:"#f85149",bar:"#f85149"},
   P:{label:"P – Proteksi & Catu Daya",badge_bg:"rgba(63,185,80,0.12)",badge_txt:"#3fb950",bar:"#3fb950"},
 };
-const UPTS=Object.keys(D);
-let activeUpt="GRESIK";
-const lineCharts={G:null,T:null,P:null};
 
-function pct(o,t){if(!t)return 100;return Math.round((1-o/t)*100)}
-function oColor(o,t){if(!t)return"#484f58";if(o===0)return"#3fb950";if(o===t)return"#f85149";return"#d29922"}
-function groupAgg(upt,grp,wi){let t=0,o=0;Object.values(D[upt][grp]).forEach(a=>{t+=a[wi].t;o+=a[wi].o});return{t,o}}
+let activeView = 'rekap';
+let activeUpt = 'GRESIK';
+let _rekapCharts = [];
+let _uptCharts = [];
 
-function renderUtabs(){
-  document.getElementById("utabs").innerHTML=UPTS.map(u=>
-    `<button class="utab${u===activeUpt?" on":""}" onclick="setUpt('${u}')">${u}</button>`
-  ).join("");
+function pct(o,t){return !t?100:Math.round((1-o/t)*100)}
+function oColor(o,t){return !t?'#484f58':o===0?'#3fb950':o===t?'#f85149':'#d29922'}
+function adjVal(name,v){return ROW_KEYS.includes(name)?v/ROW_DIVISOR:v}
+
+function groupAggAdj(upt,grp,wi){
+  let t=0,o=0;
+  Object.entries(D[upt][grp]).forEach(([name,arr])=>{t+=adjVal(name,arr[wi].t);o+=adjVal(name,arr[wi].o);});
+  return{t,o};
 }
 
-function renderSummary(){
-  let totT=0,totO=0,prevO=0;
-  const n=WL.length-1;
-  ["G","T","P"].forEach(g=>{
-    const cur=groupAggAdj(activeUpt,g,n);
-    const prv=groupAggAdj(activeUpt,g,n-1);
-    totT+=cur.t;totO+=cur.o;prevO+=prv.o;
+function calcProgress(upt){
+  const n=WL.length-1, p=Math.max(0,n-1);
+  let totT=0,totO=0,rawT=0,rawO=0,rawRow=0,rawRowO=0,prevRawO=0;
+  ['G','T','P'].forEach(g=>{
+    Object.entries(D[upt][g]).forEach(([name,arr])=>{
+      totT+=adjVal(name,arr[n].t); totO+=adjVal(name,arr[n].o);
+      rawT+=arr[n].t; rawO+=arr[n].o; prevRawO+=arr[p].o;
+      if(ROW_KEYS.includes(name)){rawRow+=arr[n].t;rawRowO+=arr[n].o;}
+    });
   });
-  const delta=prevO-totO;
-  const dStr=delta>0?`<span style="color:#0F6E56">▼ ${delta.toLocaleString()} dari sebelumnya</span>`:
-             delta<0?`<span style="color:#E24B4A">▲ ${Math.abs(delta).toLocaleString()} dari sebelumnya</span>`:
-             `<span style="color:#a0a09a">sama seperti sebelumnya</span>`;
-  document.getElementById("srow").innerHTML=`
-    <div class="sc"><div class="slb">Total Target</div><div class="sv">${totT.toLocaleString()}</div><div class="ssub">awal 2026</div></div>
-    <div class="sc"><div class="slb">Open saat ini</div><div class="sv" style="color:${totO>0?"#E24B4A":"#0F6E56"}">${totO.toLocaleString()}</div><div class="ssub">${dStr}</div></div>
-    <div class="sc"><div class="slb">Progress</div><div class="sv" style="color:#0F6E56">${pct(totO,totT)}%</div><div class="ssub">${(totT-totO).toLocaleString()} anomali selesai</div></div>`;
+  return{pct:totT>0?Math.round((1-totO/totT)*100):100,adjT:Math.round(totT),adjO:Math.round(totO),rawT,rawO,rawRow,rawRowO,prevRawO,nonRowT:rawT-rawRow,nonRowO:rawO-rawRowO};
 }
 
-function renderPanels(){
-  const n=WL.length-1;
-  document.getElementById("panels").innerHTML=["G","T","P"].map(gKey=>{
-    const gm=GROUP_META[gKey];
-    const rows=Object.entries(D[activeUpt][gKey]).map(([name,arr])=>{
-      const t=arr[n].t,o=arr[n].o;
-      if(!t&&!o)return"";
-      const p=pct(o,t),oc=oColor(o,t);
-      const d=arr[n-1].o-o;
-      const dStr=d>0?`<span class="delta" style="color:#0F6E56">▼${d}</span>`:d<0?`<span class="delta" style="color:#E24B4A">▲${Math.abs(d)}</span>`:"";
-      return `<div class="prow">
-        <div class="prow-top">
-          <span class="pname">${name}</span>
-          <span class="pnums" style="color:${oc}">${o.toLocaleString()} / ${t.toLocaleString()}${dStr}</span>
-          <span class="ppct" style="color:${oc}">${p}%</span>
-        </div>
-        <div class="pbar-bg"><div class="pbar-f" style="width:${p}%;background:${gm.bar}"></div></div>
-      </div>`;
-    }).filter(Boolean).join("");
-    const agg=groupAgg(activeUpt,gKey,n);
-    return `<div class="panel">
-      <div class="ptitle">
-        <span class="pbadge" style="background:${gm.badge_bg};color:${gm.badge_txt}">${gKey}</span>
-        <span style="color:#6b6b6b;font-size:11px">${gm.label.split("–")[1].trim()}</span>
-        <span style="margin-left:auto;font-size:11px;font-weight:600;color:${oColor(agg.o,agg.t)}">${pct(agg.o,agg.t)}% selesai</span>
-      </div>
-      ${rows||'<div style="font-size:11px;color:#a0a09a;padding:6px 0">Tidak ada anomali</div>'}
-    </div>`;
-  }).join("");
-}
+function destroyCharts(arr){arr.forEach(c=>{try{c.destroy()}catch(e){}});return[];}
 
-function renderChartsRow(){
-  document.getElementById("charts-row").innerHTML=["G","T","P"].map(gKey=>`
-    <div class="chart-box">
-      <div class="cbtitle">Tren ${GROUP_META[gKey].label.split("–")[0].trim()}</div>
-      <div class="ch-wrap"><canvas id="lc_${gKey}" role="img" aria-label="Tren ${gKey}"></canvas></div>
-    </div>`).join("");
-}
-
-function groupAggAdj(upt, grp, wi) {
-  // Aggregate dengan ROW B1 dinormalisasi ÷ 100
-  let t = 0, o = 0;
-  Object.entries(D[upt][grp]).forEach(([name, arr]) => {
-    t += adjVal(name, arr[wi].t);
-    o += adjVal(name, arr[wi].o);
-  });
-  return { t, o };
-}
-
-function renderLineCharts(){
-  ["G","T","P"].forEach(gKey=>{
-    const gm=GROUP_META[gKey];
-    // Gunakan nilai adjusted (ROW ÷ 100) untuk grafik
-    const aggT=WL.map((_,wi)=>Math.round(groupAggAdj(activeUpt,gKey,wi).t));
-    const aggO=WL.map((_,wi)=>Math.round(groupAggAdj(activeUpt,gKey,wi).o));
-    // Raw values untuk tooltip
-    const rawT=WL.map((_,wi)=>groupAgg(activeUpt,gKey,wi).t);
-    const rawO=WL.map((_,wi)=>groupAgg(activeUpt,gKey,wi).o);
-    if(lineCharts[gKey])lineCharts[gKey].destroy();
-    const ctx=document.getElementById("lc_"+gKey).getContext("2d");
-    lineCharts[gKey]=new Chart(ctx,{
-      type:"line",
-      data:{labels:WL,datasets:[
-        {label:"Target",data:aggT,borderColor:"#185FA5",borderWidth:1.5,borderDash:[4,3],pointRadius:3,pointBackgroundColor:"#185FA5",tension:0.2,fill:false},
-        {label:"Open",data:aggO,borderColor:gm.bar,backgroundColor:gm.bar+"18",borderWidth:2.5,
-          pointRadius:WL.map((_,i)=>i===WL.length-1?7:4),
-          pointBackgroundColor:WL.map((_,i)=>i===WL.length-1?"#fff":gm.bar),
-          pointBorderColor:WL.map((_,i)=>i===WL.length-1?gm.bar:"transparent"),
-          pointBorderWidth:WL.map((_,i)=>i===WL.length-1?2.5:0),
-          tension:0.2,fill:true}
-      ]},
-      options:{
-        responsive:true,maintainAspectRatio:false,
-        plugins:{
-          legend:{display:false},
-          tooltip:{callbacks:{label:c=>{
-            const wi=c.dataIndex;
-            const v=c.parsed.y,t=aggT[wi];
-            const rv=rawO[wi],rt=rawT[wi];
-            if(c.dataset.label==="Open"){
-              // Cek apakah grup ini punya ROW B1
-              const hasRow=Object.keys(D[activeUpt][gKey]).some(n=>ROW_KEYS.includes(n)&&D[activeUpt][gKey][n][wi].t>0);
-              if(hasRow) return [` Open (adj): ${v.toLocaleString()} (${pct(v,t)}%)`,` Raw: ${rv.toLocaleString()} pohon termasuk ROW`];
-              return ` Open: ${v.toLocaleString()} (${pct(v,t)}%)`;
-            }
-            const hasRow=Object.keys(D[activeUpt][gKey]).some(n=>ROW_KEYS.includes(n)&&D[activeUpt][gKey][n][wi].t>0);
-            if(hasRow) return [` Target (adj): ${v.toLocaleString()}`,` Raw: ${rt.toLocaleString()} pohon termasuk ROW`];
-            return ` Target: ${v.toLocaleString()}`;
-          }}}
-        },
-        scales:{
-          x:{grid:{color:"rgba(128,128,128,0.08)"},ticks:{font:{size:10},color:"#888",autoSkip:false,maxRotation:40}},
-          y:{grid:{color:"rgba(128,128,128,0.08)"},ticks:{font:{size:10},color:"#888",callback:v=>v>=1000?(v/1000).toFixed(1)+"k":v}}
-        }
+function makeLineChart(canvas, labels, tData, oData, col){
+  return new Chart(canvas,{
+    type:'line',
+    data:{labels,datasets:[
+      {label:'Target',data:tData,borderColor:'rgba(88,166,255,0.35)',borderDash:[4,3],borderWidth:1.5,pointRadius:0,tension:0.3,fill:false},
+      {label:'Open',data:oData,borderColor:col,backgroundColor:col+'22',borderWidth:2,
+       pointRadius:labels.map((_,i)=>i===labels.length-1?5:2),pointBackgroundColor:col,tension:0.3,fill:true}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'#1f2937',borderColor:'rgba(255,255,255,0.1)',borderWidth:1,titleColor:'#e6edf3',bodyColor:'#8b949e',
+        callbacks:{label:c=>{const o=c.parsed.y,t=tData[c.dataIndex],p=t>0?Math.round((1-o/t)*100):100;
+          return c.dataset.label==='Open'?` Open: ${o.toLocaleString()} — ${p}% selesai`:` Target: ${o.toLocaleString()}`;
+        }}
+      }},
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,0.03)'},ticks:{font:{size:8,family:'DM Mono'},color:'#484f58',autoSkip:true,maxTicksLimit:6,maxRotation:45}},
+        y:{beginAtZero:true,grid:{color:'rgba(255,255,255,0.03)'},ticks:{font:{size:8,family:'DM Mono'},color:'#484f58',callback:v=>v>=1000?(v/1000).toFixed(1)+'k':v}}
       }
-    });
+    }
   });
 }
 
-
-const ROW_KEYS = ["T2 ROW B1"]; // kategori yang dibagi 100 untuk normalisasi bobot
-const ROW_DIVISOR = 100;
-
-function adjVal(name, val) {
-  return ROW_KEYS.includes(name) ? val / ROW_DIVISOR : val;
-}
-
-function calcProgress(upt) {
-  const n = WL.length - 1;
-  const p = Math.max(0, n - 1);
-  let totT = 0, totO = 0;
-  ["G","T","P"].forEach(g => {
-    Object.entries(D[upt][g]).forEach(([name, arr]) => {
-      totT += adjVal(name, arr[n].t);
-      totO += adjVal(name, arr[n].o);
-    });
-  });
-  let rawT = 0, rawO = 0, rawRow = 0, rawRowO = 0, prevRawO = 0;
-  ["G","T","P"].forEach(g => {
-    Object.entries(D[upt][g]).forEach(([name, arr]) => {
-      rawT += arr[n].t;
-      rawO += arr[n].o;
-      prevRawO += arr[p].o;
-      if (ROW_KEYS.includes(name)) { rawRow += arr[n].t; rawRowO += arr[n].o; }
-    });
-  });
-  return {
-    pct: totT > 0 ? Math.round((1 - totO / totT) * 100) : 100,
-    adjT: Math.round(totT), adjO: Math.round(totO),
-    rawT, rawO, rawRow, rawRowO, prevRawO,
-    nonRowT: rawT - rawRow, nonRowO: rawO - rawRowO
-  };
-}
-
-function renderRekap() {
-  const n = WL.length - 1;
-  const results = UPTS.map(upt => ({ upt, ...calcProgress(upt) }));
-  results.sort((a, b) => b.pct - a.pct);
-
-  let totalRawT = 0, totalRawO = 0, totalAdjT = 0, totalAdjO = 0;
-  results.forEach(r => { totalRawT += r.rawT; totalRawO += r.rawO; totalAdjT += r.adjT; totalAdjO += r.adjO; });
-  const totalPct = totalAdjT > 0 ? Math.round((1 - totalAdjO / totalAdjT) * 100) : 100;
-  const totalBarColor = totalPct >= 80 ? '#0F6E56' : totalPct >= 50 ? '#BA7517' : '#E24B4A';
-
-  // ── Summary cards per UPT ──
-  const cards = results.map(r => {
-    const barColor = r.pct >= 80 ? '#0F6E56' : r.pct >= 50 ? '#BA7517' : '#E24B4A';
-    return `<div class="rekap-card">
-      <div class="rekap-card-title">
-        <span class="rekap-upt">${r.upt}</span>
-        <span class="rekap-pct-big" style="margin-left:auto;color:${barColor}">${r.pct}%</span>
-      </div>
-      <div class="rekap-bar-bg"><div class="rekap-bar-f" style="width:${r.pct}%;background:${barColor}"></div></div>
-      <div class="rekap-detail">
-        Open: <strong style="color:var(--text2)">${r.rawO.toLocaleString()}</strong> / Target: <strong style="color:var(--text2)">${r.rawT.toLocaleString()}</strong><br>
-        Non-ROW: ${r.nonRowO.toLocaleString()} / ${r.nonRowT.toLocaleString()}<br>
-        ROW B1: ${r.rawRowO.toLocaleString()} / ${r.rawRow.toLocaleString()} pohon
-      </div>
-    </div>`;
-  }).join('');
-
-  // ── Detail per kategori (G, T, P) — agregat semua UPT ──
-  function buildGroupPanel(gKey) {
-    const gm = GROUP_META[gKey];
-    // Collect all sub-category names across all UPTs for this group
-    const allSubNames = new Set();
-    UPTS.forEach(upt => Object.keys(D[upt][gKey]).forEach(k => allSubNames.add(k)));
-
-    const rows = [...allSubNames].map(name => {
-      let totT = 0, totO = 0, hasAny = false;
-      UPTS.forEach(upt => {
-        const arr = D[upt][gKey][name];
-        if (arr) { totT += arr[n].t; totO += arr[n].o; if(arr[n].t > 0 || arr[n].o > 0) hasAny = true; }
-      });
-      if (!hasAny) return '';
-      const p = pct(totO, totT);
-      const oc = oColor(totO, totT);
-      return `<div class="prow">
-        <div class="prow-top">
-          <span class="pname">${name}</span>
-          <span class="pnums" style="color:${oc}">${totO.toLocaleString()} / ${totT.toLocaleString()}</span>
-          <span class="ppct" style="color:${oc}">${p}%</span>
-        </div>
-        <div class="pbar-bg"><div class="pbar-f" style="width:${p}%;background:${gm.bar}"></div></div>
-      </div>`;
-    }).filter(Boolean).join('');
-
-    // Group total (adjusted)
-    let gAdjT = 0, gAdjO = 0;
-    UPTS.forEach(upt => { const a = groupAggAdj(upt, gKey, n); gAdjT += a.t; gAdjO += a.o; });
-    const gPct = gAdjT > 0 ? Math.round((1 - gAdjO / gAdjT) * 100) : 100;
-
-    return `<div class="panel">
-      <div class="ptitle">
-        <span class="pbadge" style="background:${gm.badge_bg};color:${gm.badge_txt}">${gKey}</span>
-        <span style="color:var(--text2);font-size:11px">${gm.label.split('–')[1].trim()}</span>
-        <span style="margin-left:auto;font-size:11px;font-weight:600;color:${oColor(gAdjO,gAdjT)}">${gPct}% selesai</span>
-      </div>
-      ${rows || '<div style="font-size:11px;color:var(--text3);padding:6px 0">Tidak ada anomali</div>'}
-    </div>`;
-  }
-
-  // ── Per UPT detail columns ──
-  function buildUptDetailChart() {
-    // Returns HTML with chart canvases; charts rendered after innerHTML set
-    const n = WL.length - 1;
-    const groups = ['G','T','P'];
-    let html = '';
-    let chartDefs = []; // {id, labels, datasets}
-
-    groups.forEach(gKey => {
-      const gm = GROUP_META[gKey];
-      const allSubNames = new Set();
-      UPTS.forEach(upt => Object.keys(D[upt][gKey]).forEach(k => allSubNames.add(k)));
-      const activeSubs = [...allSubNames].filter(name =>
-        UPTS.some(upt => { const arr = D[upt][gKey][name]; return arr && (arr[n].t > 0 || arr[n].o > 0); })
-      );
-      if (!activeSubs.length) return;
-
-      // Build grouped bar chart: for each sub-category, show open bars per UPT
-      const chartId = 'chart_detail_' + gKey;
-      const barH = Math.max(activeSubs.length * 52 + 80, 160);
-
-      // Colors per UPT
-      const UPT_COLORS = {
-        MALANG:'#58a6ff', SURABAYA:'#3fb950', GRESIK:'#f85149',
-        BALI:'#d29922', MADIUN:'#a371f7', PROBOLINGGO:'#f0883e'
-      };
-
-      // Dataset per UPT: open values per sub-category
-      const datasets = UPTS.map(upt => ({
-        upt,
-        label: upt,
-        data: activeSubs.map(name => {
-          const arr = D[upt][gKey][name];
-          return arr ? arr[n].o : 0;
-        }),
-        targets: activeSubs.map(name => {
-          const arr = D[upt][gKey][name];
-          return arr ? arr[n].t : 0;
-        }),
-        color: UPT_COLORS[upt]
-      }));
-
-      // Progress % per sub-category (total all UPT)
-      const totalPcts = activeSubs.map(name => {
-        let totT = 0, totO = 0;
-        UPTS.forEach(upt => { const arr = D[upt][gKey][name]; if(arr){totT+=arr[n].t;totO+=arr[n].o;} });
-        return pct(totO, totT);
-      });
-
-      chartDefs.push({ id: chartId, activeSubs, datasets, totalPcts, gKey, barH });
-
-      html += `
-        <div style="margin-bottom:24px">
-          <div style="font-size:12px;font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:8px">
-            <span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;background:${gm.badge_bg};color:${gm.badge_txt}">${gKey}</span>
-            <span style="color:var(--text2);font-size:11px">${gm.label.split('–')[1].trim()}</span>
-          </div>
-          <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px;font-size:10px">
-            ${UPTS.map(u=>`<span style="display:flex;align-items:center;gap:4px">
-              <span style="width:8px;height:8px;border-radius:2px;background:${UPT_COLORS[u]};display:inline-block"></span>${u}
-            </span>`).join('')}
-          </div>
-          <div style="background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px">
-            <div style="position:relative;width:100%;height:${barH}px">
-              <canvas id="${chartId}" role="img" aria-label="Bar chart ${gKey}"></canvas>
-            </div>
-            <div style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px">
-              ${activeSubs.map((name,i) => {
-                const p = totalPcts[i];
-                const oc = p===100?'#0F6E56':p===0?'#E24B4A':'#BA7517';
-                return `<div style="font-size:10px;display:flex;align-items:center;gap:6px">
-                  <div style="flex:1;min-width:0">
-                    <div style="color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</div>
-                    <div style="height:4px;background:var(--bg3);border-radius:2px;margin-top:2px;overflow:hidden">
-                      <div style="height:100%;width:${p}%;background:${oc};border-radius:2px"></div>
-                    </div>
-                  </div>
-                  <span style="font-size:10px;font-weight:600;color:${oc};white-space:nowrap">${p}%</span>
-                </div>`;
-              }).join('')}
-            </div>
-          </div>
-        </div>`;
-    });
-
-    // Store chart defs globally for rendering after DOM insert
-    window._detailChartDefs = chartDefs;
-    return html;
-  }
-
-  function renderDetailCharts() {
-    if (!window._detailChartDefs) return;
-    window._detailChartDefs.forEach(({ id, activeSubs, datasets, gKey, barH }) => {
-      const canvas = document.getElementById(id);
-      if (!canvas) return;
-      if (canvas._chart) canvas._chart.destroy();
-
-      const UPT_COLORS = {
-        MALANG:'#58a6ff', SURABAYA:'#3fb950', GRESIK:'#f85149',
-        BALI:'#d29922', MADIUN:'#a371f7', PROBOLINGGO:'#f0883e'
-      };
-
-      canvas._chart = new Chart(canvas.getContext('2d'), {
-        type: 'bar',
-        data: {
-          labels: activeSubs,
-          datasets: datasets.map(ds => ({
-            label: ds.label,
-            data: ds.data,
-            backgroundColor: ds.color + 'cc',
-            borderColor: ds.color,
-            borderWidth: 0,
-            borderRadius: 3,
-          }))
-        },
-        options: {
-          indexAxis: 'y',
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                label: ctx => {
-                  const upt = ctx.dataset.label;
-                  const si = ctx.dataIndex;
-                  const ds = datasets.find(d => d.label === upt);
-                  const o = ctx.parsed.x, t = ds ? ds.targets[si] : 0;
-                  return ` ${upt}: ${o.toLocaleString()} / ${t.toLocaleString()} (${pct(o,t)}%)`;
-                }
-              }
-            }
-          },
-          scales: {
-            x: {
-              grid: { color: 'rgba(128,128,128,0.08)' },
-              ticks: { font: { size: 10 }, color: '#888', callback: v => v >= 1000 ? (v/1000).toFixed(1)+'k' : v }
-            },
-            y: {
-              grid: { display: false },
-              ticks: { font: { size: 10 }, color: '#888' }
-            }
-          }
-        }
-      });
-    });
-  }
-
-  const _rekapHTML = `
-    <div class="rekap-header">
-      Rekap Total 6 UPT — ${LAST_UPDATE}
-      <span style="font-size:11px;font-weight:400;color:var(--text3)">diurutkan dari progress tertinggi</span>
-    </div>
-    <div class="rekap-note">
-      <strong>Catatan perhitungan %:</strong> Progress dihitung dengan <strong>normalisasi bobot ROW B1</strong> (dibagi ${ROW_DIVISOR}).
-      ROW B1 adalah anomali vegetasi yang satuannya <em>pohon</em> (ribuan), sedangkan kategori lain satuannya <em>unit/titik</em> (puluhan).
-      Tanpa normalisasi, ROW B1 mendominasi 77–91% total target sehingga progress kategori lain tidak terbaca.
-    </div>
-
-    <div class="rekap-total" style="margin-bottom:16px">
-      <div class="rekap-total-item">
-        <div class="rekap-total-lbl">Progress keseluruhan</div>
-        <div class="rekap-total-val" style="color:${totalBarColor}">${totalPct}%</div>
-      </div>
-      <div class="rekap-total-item">
-        <div class="rekap-total-lbl">Total open</div>
-        <div class="rekap-total-val" style="color:#E24B4A">${totalRawO.toLocaleString()}</div>
-      </div>
-      <div class="rekap-total-item">
-        <div class="rekap-total-lbl">Total target</div>
-        <div class="rekap-total-val">${totalRawT.toLocaleString()}</div>
-      </div>
-      <div class="rekap-total-item">
-        <div class="rekap-total-lbl">Total selesai</div>
-        <div class="rekap-total-val" style="color:#0F6E56">${(totalRawT - totalRawO).toLocaleString()}</div>
-      </div>
-    </div>
-
-    <div class="rekap-grid" style="margin-bottom:24px">${cards}</div>
-
-    <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:14px;padding-top:4px;border-top:0.5px solid var(--border);padding-top:16px">
-      Detail per Kategori — semua UPT (Open / Target · %)
-    </div>
-
-    <div style="margin-bottom:4px" id="detail-charts-wrap">${buildUptDetailChart()}</div>
-
-    <div style="margin-bottom:6px;font-size:12px;font-weight:600;color:var(--text)">Agregat per Grup (G / T / P)</div>
-    <div class="panels" style="margin-bottom:0">${buildGroupPanel('G')}${buildGroupPanel('T')}${buildGroupPanel('P')}</div>
-  `;
-  document.getElementById('view-rekap').innerHTML = _rekapHTML;
-  setTimeout(renderDetailCharts, 0);
-}
-
-function setUpt(u){activeUpt=u;renderAll();}
-
-/* ── Navigation ── */
-let activeView = 'rekap'; // 'rekap' | 'upt'
-
+// ── NAV ──────────────────────────────────────────────────────────────────
 function renderNavTabs(){
-  document.getElementById('nav-tabs').innerHTML = [
-    {key:'rekap', label:'Rekap UIT JBM'},
-    {key:'upt',   label:'Per UPT'}
-  ].map(t => `<button class="nav-tab${t.key===activeView?' on':''}" onclick="setView('${t.key}')">${t.label}</button>`).join('');
+  document.getElementById('nav-tabs').innerHTML=
+    [{key:'rekap',label:'Rekap UIT JBM'},{key:'upt',label:'Per UPT'}]
+    .map(t=>`<button class="nav-tab${t.key===activeView?' on':''}" onclick="setView('${t.key}')">${t.label}</button>`).join('');
 }
-
-function setView(v){
-  activeView = v;
-  document.getElementById('view-rekap').style.display = v==='rekap' ? '' : 'none';
-  document.getElementById('view-upt').style.display   = v==='upt'  ? '' : 'none';
-  renderNavTabs();
-  if(v==='upt') renderUtabs();
-}
-
-function renderAll(){
-  renderNavTabs();
-  renderRekap();
-  if(activeView==='upt'){
-    renderUtabs();
-    renderSummary();
-    renderPanels();
-    renderChartsRow();
-    renderLineCharts();
-  }
-}
-document.getElementById("last-update-top").textContent="Data: "+LAST_UPDATE;
-renderAll();
-
-
-// ── Override render functions for dark theme ──────────────────────────────
-
-function renderNavTabs(){
-  document.getElementById('nav-tabs').innerHTML=[
-    {key:'rekap',label:'Rekap UIT JBM'},
-    {key:'upt',label:'Per UPT'}
-  ].map(t=>`<button class="nav-tab${t.key===activeView?' on':''}" onclick="setView('${t.key}')">${t.label}</button>`).join('');
-}
-
 function setView(v){
   activeView=v;
   document.getElementById('view-rekap').style.display=v==='rekap'?'':'none';
   document.getElementById('view-upt').style.display=v==='upt'?'':'none';
-  renderNavTabs();
-  if(v==='upt') renderUtabs();
+  renderAll();
 }
+function setUpt(u){activeUpt=u;renderUptView();}
 
-function renderUtabs(){
-  document.getElementById('utabs').innerHTML=UPTS.map(u=>
-    `<button class="utab${u===activeUpt?' on':''}" onclick="setUpt('${u}')">${u}</button>`
-  ).join('');
-}
-
-function renderSummary(){
-  const n=WL.length-1;
-  let totT=0,totO=0,prevO=0;
-  ['G','T','P'].forEach(g=>{
-    const cur=groupAggAdj(activeUpt,g,n);
-    const prv=groupAggAdj(activeUpt,g,n-1);
-    totT+=cur.t;totO+=cur.o;prevO+=prv.o;
-  });
-  const delta=prevO-totO;
-  const dStr=delta>0?`<span style="color:#3fb950">▼ ${delta.toLocaleString()}</span>`:
-             delta<0?`<span style="color:#f85149">▲ ${Math.abs(delta).toLocaleString()}</span>`:
-             `<span style="color:var(--text3)">—</span>`;
-  const prog=pct(totO,totT);
-  const pc=prog>=80?'#3fb950':prog>=50?'#d29922':'#f85149';
-  document.getElementById('srow-upt').innerHTML=`
-    <div class="stat-row" style="margin-bottom:20px">
-      <div class="stat-card"><div class="stat-lbl">Target</div><div class="stat-val">${totT.toLocaleString()}</div><div class="stat-sub">total anomali</div></div>
-      <div class="stat-card"><div class="stat-lbl">Open</div><div class="stat-val" style="color:#f85149">${Math.round(totO).toLocaleString()}</div><div class="stat-sub">${dStr} vs sebelumnya</div></div>
-      <div class="stat-card"><div class="stat-lbl">Progress</div><div class="stat-val" style="color:${pc}">${prog}%</div><div class="stat-sub">${Math.round(totT-totO).toLocaleString()} selesai</div></div>
-      <div class="stat-card"><div class="stat-lbl">Update</div><div class="stat-val" style="font-size:14px;padding-top:6px;font-family:var(--font-mono)">${LAST_UPDATE}</div><div class="stat-sub">data terkini</div></div>
-    </div>`;
-}
-
-function renderPanels(){
-  const n=WL.length-1;
-  document.getElementById('panels').innerHTML=['G','T','P'].map(gKey=>{
-    const gm=GROUP_META[gKey];
-    const rows=Object.entries(D[activeUpt][gKey]).map(([name,arr])=>{
-      const t=arr[n].t,o=arr[n].o;
-      if(!t&&!o)return'';
-      const p=pct(o,t),oc=oColor(o,t);
-      const d=arr[n-1].o-o;
-      const dStr=d>0?`<span class="delta-tag" style="color:#3fb950">▼${d}</span>`:d<0?`<span class="delta-tag" style="color:#f85149">▲${Math.abs(d)}</span>`:'';
-      return `<div class="cat-row">
-        <div class="cat-top">
-          <span class="cat-name">${name}</span>
-          <span class="cat-nums" style="color:${oc}">${o.toLocaleString()}/${t.toLocaleString()}${dStr}</span>
-          <span class="cat-pct" style="color:${oc}">${p}%</span>
-        </div>
-        <div class="cat-bar-bg"><div class="cat-bar-f" style="width:${p}%;background:${gm.bar}"></div></div>
-      </div>`;
-    }).filter(Boolean).join('');
-    const agg=groupAggAdj(activeUpt,gKey,n);
-    const gp=pct(agg.o,agg.t);
-    const gc=gp>=80?'#3fb950':gp>=50?'#d29922':'#f85149';
-    return `<div class="gpanel">
-      <div class="gpanel-head">
-        <span class="gpanel-badge" style="background:${gm.badge_bg};color:${gm.badge_txt}">${gKey}</span>
-        <span class="gpanel-label">${gm.label.split('–')[1].trim()}</span>
-        <span class="gpanel-pct" style="color:${gc}">${gp}%</span>
-      </div>
-      ${rows||'<div style="font-size:11px;color:var(--text3);padding:4px 0">Tidak ada anomali</div>'}
-    </div>`;
-  }).join('');
-}
-
-function renderChartsRow(){
-  document.getElementById('charts-row').innerHTML=['G','T','P'].map(gKey=>`
-    <div class="line-chart-card">
-      <div class="line-chart-title">${GROUP_META[gKey].label.split('–')[0].trim()}</div>
-      <div class="line-chart-wrap"><canvas id="lc_${gKey}" role="img" aria-label="Tren ${gKey}"></canvas></div>
-    </div>`).join('');
-}
-
-function renderLineCharts(){
-  ['G','T','P'].forEach(gKey=>{
-    const gm=GROUP_META[gKey];
-    const aggT=WL.map((_,wi)=>Math.round(groupAggAdj(activeUpt,gKey,wi).t));
-    const aggO=WL.map((_,wi)=>Math.round(groupAggAdj(activeUpt,gKey,wi).o));
-    if(lineCharts[gKey])lineCharts[gKey].destroy();
-    const ctx=document.getElementById('lc_'+gKey).getContext('2d');
-    lineCharts[gKey]=new Chart(ctx,{
-      type:'line',
-      data:{labels:WL,datasets:[
-        {label:'Target',data:aggT,borderColor:'#58a6ff',borderWidth:1.5,borderDash:[4,3],pointRadius:2,pointBackgroundColor:'#58a6ff',tension:0.3,fill:false},
-        {label:'Open',data:aggO,borderColor:gm.bar,backgroundColor:gm.bar+'22',borderWidth:2.5,
-          pointRadius:WL.map((_,i)=>i===WL.length-1?6:3),
-          pointBackgroundColor:WL.map((_,i)=>i===WL.length-1?gm.bar:gm.bar),
-          tension:0.3,fill:true}
-      ]},
-      options:{
-        responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{display:false},tooltip:{
-          backgroundColor:'#1f2937',borderColor:'rgba(255,255,255,0.1)',borderWidth:1,
-          titleColor:'#e6edf3',bodyColor:'#8b949e',
-          callbacks:{label:c=>{const v=c.parsed.y,t=aggT[c.dataIndex];return c.dataset.label==='Open'?` Open: ${v.toLocaleString()} (${pct(v,t)}%)`:` Target: ${v.toLocaleString()}`}}
-        }},
-        scales:{
-          x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{font:{size:9,family:'DM Mono'},color:'#484f58',autoSkip:false,maxRotation:40}},
-          y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{font:{size:9,family:'DM Mono'},color:'#484f58',callback:v=>v>=1000?(v/1000).toFixed(1)+'k':v}}
-        }
-      }
-    });
-  });
-}
-
+// ── REKAP ─────────────────────────────────────────────────────────────────
 function renderRekap(){
+  _rekapCharts=destroyCharts(_rekapCharts);
   const n=WL.length-1;
-  const results=UPTS.map(upt=>({upt,...calcProgress(upt)}));
-  results.sort((a,b)=>b.pct-a.pct);
+  const results=UPTS.map(upt=>({upt,...calcProgress(upt)})).sort((a,b)=>b.pct-a.pct);
   let totalRawT=0,totalRawO=0,totalAdjT=0,totalAdjO=0,totalPrevRawO=0;
   results.forEach(r=>{totalRawT+=r.rawT;totalRawO+=r.rawO;totalAdjT+=r.adjT;totalAdjO+=r.adjO;totalPrevRawO+=r.prevRawO;});
   const totalPct=totalAdjT>0?Math.round((1-totalAdjO/totalAdjT)*100):100;
   const tpc=totalPct>=80?'#3fb950':totalPct>=50?'#d29922':'#f85149';
   const totalDelta=totalPrevRawO-totalRawO;
-  const totalDeltaStr=totalDelta>0?`<span style="color:#3fb950;font-size:13px">▼ ${totalDelta.toLocaleString()}</span>`:totalDelta<0?`<span style="color:#f85149;font-size:13px">▲ ${Math.abs(totalDelta).toLocaleString()}</span>`:`<span style="color:var(--text3);font-size:13px">—</span>`;
+  const dStr=totalDelta>0?`<span style="color:#3fb950">▼ ${totalDelta.toLocaleString()}</span>`:totalDelta<0?`<span style="color:#f85149">▲ ${Math.abs(totalDelta).toLocaleString()}</span>`:`<span style="color:var(--text3)">—</span>`;
 
   const uptCards=results.map(r=>{
     const bc=r.pct>=80?'#3fb950':r.pct>=50?'#d29922':'#f85149';
-    const delta = r.prevRawO - r.rawO;
-    const deltaStr = delta > 0
-      ? `<span style="color:#3fb950;font-family:var(--font-mono);font-size:10px;margin-left:4px">▼${delta.toLocaleString()}</span>`
-      : delta < 0
-      ? `<span style="color:#f85149;font-family:var(--font-mono);font-size:10px;margin-left:4px">▲${Math.abs(delta).toLocaleString()}</span>`
-      : `<span style="color:var(--text3);font-family:var(--font-mono);font-size:10px;margin-left:4px">—</span>`;
-    return `<div class="upt-card">
-      <div class="upt-head">
-        <span class="upt-name">${r.upt}</span>
-        <span class="upt-pct" style="color:${bc}">${r.pct}%</span>
-      </div>
-      <div class="upt-bar-bg"><div class="upt-bar-f" style="width:${r.pct}%;background:${bc}"></div></div>
-      <div class="upt-stats">
-        <div class="upt-stat">Open <span style="color:var(--text)">${r.rawO.toLocaleString()}${deltaStr}</span></div>
-        <div class="upt-stat">Target <span>${r.rawT.toLocaleString()}</span></div>
-        <div class="upt-stat">Non-ROW <span>${r.nonRowO.toLocaleString()}/${r.nonRowT.toLocaleString()}</span></div>
-        <div class="upt-stat">ROW B1 <span>${r.rawRowO.toLocaleString()} pohon</span></div>
-      </div>
-    </div>`;
+    const d=r.prevRawO-r.rawO;
+    const ds=d>0?`<span style="color:#3fb950;font-family:var(--font-m);font-size:10px;margin-left:3px">▼${d.toLocaleString()}</span>`:d<0?`<span style="color:#f85149;font-family:var(--font-m);font-size:10px;margin-left:3px">▲${Math.abs(d).toLocaleString()}</span>`:`<span style="color:var(--text3);font-family:var(--font-m);font-size:10px;margin-left:3px">—</span>`;
+    return `<div class="upt-card"><div class="upt-head"><span class="upt-name">${r.upt}</span><span class="upt-pct" style="color:${bc}">${r.pct}%</span></div>
+    <div class="upt-bar-bg"><div class="upt-bar-f" style="width:${r.pct}%;background:${bc}"></div></div>
+    <div class="upt-stats">
+      <div class="upt-stat">Open <span>${r.rawO.toLocaleString()}${ds}</span></div>
+      <div class="upt-stat">Target <span>${r.rawT.toLocaleString()}</span></div>
+      <div class="upt-stat">Non-ROW <span>${r.nonRowO.toLocaleString()}/${r.nonRowT.toLocaleString()}</span></div>
+      <div class="upt-stat">ROW B1 <span>${r.rawRowO.toLocaleString()} pohon</span></div>
+    </div></div>`;
   }).join('');
 
-  function buildGroupAgg(gKey){
+  // Group aggregate panels
+  function buildGrpPanel(gKey){
     const gm=GROUP_META[gKey];
-    const allSubs=new Set();
-    UPTS.forEach(upt=>Object.keys(D[upt][gKey]).forEach(k=>allSubs.add(k)));
+    const allSubs=new Set();UPTS.forEach(u=>Object.keys(D[u][gKey]).forEach(k=>allSubs.add(k)));
     const rows=[...allSubs].map(name=>{
-      let totT=0,totO=0,hasAny=false;
-      UPTS.forEach(upt=>{const arr=D[upt][gKey][name];if(arr){totT+=arr[n].t;totO+=arr[n].o;if(arr[n].t>0||arr[n].o>0)hasAny=true;}});
-      if(!hasAny)return'';
+      let totT=0,totO=0,has=false;
+      UPTS.forEach(u=>{const a=D[u][gKey][name];if(a){totT+=a[n].t;totO+=a[n].o;if(a[n].t>0||a[n].o>0)has=true;}});
+      if(!has)return'';
       const p=pct(totO,totT),oc=oColor(totO,totT);
-      return `<div class="cat-row">
-        <div class="cat-top">
-          <span class="cat-name">${name}</span>
-          <span class="cat-nums" style="color:${oc}">${totO.toLocaleString()}/${totT.toLocaleString()}</span>
-          <span class="cat-pct" style="color:${oc}">${p}%</span>
-        </div>
-        <div class="cat-bar-bg"><div class="cat-bar-f" style="width:${p}%;background:${gm.bar}"></div></div>
-      </div>`;
+      return `<div class="cat-row"><div class="cat-top"><span class="cat-name">${name}</span><span class="cat-nums" style="color:${oc}">${totO.toLocaleString()}/${totT.toLocaleString()}</span><span class="cat-pct" style="color:${oc}">${p}%</span></div><div class="cat-bar-bg"><div class="cat-bar-f" style="width:${p}%;background:${gm.bar}"></div></div></div>`;
     }).filter(Boolean).join('');
-    let gAdjT=0,gAdjO=0;
-    UPTS.forEach(upt=>{const a=groupAggAdj(upt,gKey,n);gAdjT+=a.t;gAdjO+=a.o;});
-    const gp=pct(gAdjO,gAdjT),gc=gp>=80?'#3fb950':gp>=50?'#d29922':'#f85149';
-    return `<div class="gpanel">
-      <div class="gpanel-head">
-        <span class="gpanel-badge" style="background:${gm.badge_bg};color:${gm.badge_txt}">${gKey}</span>
-        <span class="gpanel-label">${gm.label.split('–')[1].trim()}</span>
-        <span class="gpanel-pct" style="color:${gc}">${gp}%</span>
-      </div>
-      ${rows||'<div style="font-size:11px;color:var(--text3)">—</div>'}
-    </div>`;
+    let gAdjT=0,gAdjO=0;UPTS.forEach(u=>{const a=groupAggAdj(u,gKey,n);gAdjT+=a.t;gAdjO+=a.o;});
+    const gp=pct(gAdjO,gAdjT),gc=oColor(gAdjO,gAdjT);
+    return `<div class="gpanel"><div class="gpanel-head"><span class="gpanel-badge" style="background:${gm.badge_bg};color:${gm.badge_txt}">${gKey}</span><span class="gpanel-label">${gm.label.split('–')[1].trim()}</span><span class="gpanel-pct" style="color:${gc}">${gp}%</span></div>${rows||'<div style="font-size:11px;color:var(--text3)">—</div>'}</div>`;
   }
 
-  function buildDetailChart(){
-    const UPT_COLORS={MALANG:'#58a6ff',SURABAYA:'#3fb950',GRESIK:'#f85149',BALI:'#d29922',MADIUN:'#a371f7',PROBOLINGGO:'#f0883e'};
-    let html='';let defs=[];
+  // Detail charts per group (UPT comparison grouped bar)
+  function buildDetailCharts(){
+    let html='',chartDefs=[];
     ['G','T','P'].forEach(gKey=>{
       const gm=GROUP_META[gKey];
-      const allSubs=new Set();
-      UPTS.forEach(upt=>Object.keys(D[upt][gKey]).forEach(k=>allSubs.add(k)));
-      const active=[...allSubs].filter(name=>UPTS.some(upt=>{const a=D[upt][gKey][name];return a&&(a[n].t>0||a[n].o>0);}));
+      const allSubs=new Set();UPTS.forEach(u=>Object.keys(D[u][gKey]).forEach(k=>allSubs.add(k)));
+      const active=[...allSubs].filter(name=>UPTS.some(u=>{const a=D[u][gKey][name];return a&&(a[n].t>0||a[n].o>0);}));
       if(!active.length)return;
-      const cid='dc_'+gKey;
-      const barH=Math.max(active.length*52+80,160);
+      const cid='rekap_chart_'+gKey;
+      const barH=Math.max(active.length*50+80,160);
       const datasets=UPTS.map(upt=>({
         label:upt,
         data:active.map(name=>{const a=D[upt][gKey][name];return a?a[n].o:0;}),
         targets:active.map(name=>{const a=D[upt][gKey][name];return a?a[n].t:0;}),
         color:UPT_COLORS[upt]
       }));
-      const totalPcts=active.map(name=>{
-        let tT=0,tO=0;
-        UPTS.forEach(upt=>{const a=D[upt][gKey][name];if(a){tT+=a[n].t;tO+=a[n].o;}});
-        return pct(tO,tT);
+      const totalPcts=active.map(name=>{let tT=0,tO=0;UPTS.forEach(u=>{const a=D[u][gKey][name];if(a){tT+=a[n].t;tO+=a[n].o;}});return pct(tO,tT);});
+      chartDefs.push({cid,active,datasets,totalPcts,barH,gKey});
+      const lg=UPTS.map(u=>`<span class="chart-legend-item"><span class="legend-sq" style="background:${UPT_COLORS[u]}"></span>${u}</span>`).join('');
+      const mini=active.map((name,i)=>{const p=totalPcts[i];const oc=p===100?'#3fb950':p===0?'#f85149':'#d29922';return`<div><div class="mini-prog-name">${name}</div><div style="display:flex;align-items:center;gap:5px"><div style="flex:1;height:3px;background:var(--bg3);border-radius:2px;overflow:hidden"><div style="height:100%;width:${p}%;background:${oc};border-radius:2px"></div></div><span style="font-family:var(--font-m);font-size:9px;color:${oc};min-width:28px;text-align:right">${p}%</span></div></div>`;}).join('');
+      html+=`<div class="detail-chart-block"><div class="detail-chart-head"><span class="grp-badge" style="background:${gm.badge_bg};color:${gm.badge_txt}">${gKey}</span><span style="font-size:12px;color:var(--text2)">${gm.label.split('–')[1].trim()}</span></div>
+      <div class="chart-card"><div class="chart-legend">${lg}</div><div style="position:relative;width:100%;height:${barH}px"><canvas id="${cid}"></canvas></div><div class="mini-prog-grid">${mini}</div></div></div>`;
+    });
+    return {html,chartDefs};
+  }
+
+  const {html:detailHtml,chartDefs}=buildDetailCharts();
+
+  document.getElementById('view-rekap').innerHTML=`
+    <div class="sec-head"><span class="sec-title">Ringkasan</span><span class="sec-rule"></span><span class="sec-meta">${LAST_UPDATE}</span></div>
+    <div class="stat-row">
+      <div class="stat-card"><div class="slb">Progress UIT JBM</div><div class="sv" style="color:${tpc}">${totalPct}%</div><div class="ssub">normalisasi ROW B1</div></div>
+      <div class="stat-card"><div class="slb">Total Open</div><div class="sv" style="color:#f85149">${totalRawO.toLocaleString()}</div><div class="ssub">${dStr} vs kemarin</div></div>
+      <div class="stat-card"><div class="slb">Total Target</div><div class="sv">${totalRawT.toLocaleString()}</div><div class="ssub">awal tahun 2026</div></div>
+      <div class="stat-card"><div class="slb">Selesai</div><div class="sv" style="color:#3fb950">${(totalRawT-totalRawO).toLocaleString()}</div><div class="ssub">${Math.round((totalRawT-totalRawO)/totalRawT*100)}% dari target</div></div>
+    </div>
+    <div class="note-box"><strong>Catatan normalisasi:</strong> ROW B1 (vegetasi/pohon) dibagi ${ROW_DIVISOR} agar bobotnya proporsional. Tanpa normalisasi ROW B1 mendominasi 77–91% total target.</div>
+    <div class="sec-head"><span class="sec-title">Status per UPT</span><span class="sec-rule"></span><span class="sec-meta">diurutkan: progress tertinggi</span></div>
+    <div class="upt-grid">${uptCards}</div>
+    <div class="sec-head"><span class="sec-title">Detail per Kategori</span><span class="sec-rule"></span><span class="sec-meta">Open per UPT</span></div>
+    ${detailHtml}
+    <div class="sec-head"><span class="sec-title">Agregat G / T / P</span><span class="sec-rule"></span><span class="sec-meta">total 6 UPT</span></div>
+    <div class="panels-grid">${buildGrpPanel('G')}${buildGrpPanel('T')}${buildGrpPanel('P')}</div>`;
+
+  setTimeout(()=>{
+    chartDefs.forEach(({cid,active,datasets,barH})=>{
+      const canvas=document.getElementById(cid);
+      if(!canvas)return;
+      const chart=new Chart(canvas,{
+        type:'bar',
+        data:{labels:active,datasets:datasets.map(ds=>({label:ds.label,data:ds.data,backgroundColor:ds.color+'99',borderColor:ds.color,borderWidth:0,borderRadius:3}))},
+        options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:false},tooltip:{backgroundColor:'#1f2937',borderColor:'rgba(255,255,255,0.1)',borderWidth:1,titleColor:'#e6edf3',bodyColor:'#8b949e',
+            callbacks:{label:c=>{const ds=datasets.find(d=>d.label===c.dataset.label);const o=c.parsed.x,t=ds?ds.targets[c.dataIndex]:0;return ` ${c.dataset.label}: ${o.toLocaleString()}/${t.toLocaleString()} (${pct(o,t)}%)`;}}}},
+          scales:{x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{font:{size:9,family:'DM Mono'},color:'#484f58',callback:v=>v>=1000?(v/1000).toFixed(1)+'k':v}},y:{grid:{display:false},ticks:{font:{size:9,family:'DM Mono'},color:'#8b949e'}}}}
       });
-      defs.push({id:cid,active,datasets,totalPcts,barH});
-      const legendHtml=UPTS.map(u=>`<span class="chart-legend-item"><span class="legend-sq" style="background:${UPT_COLORS[u]}"></span>${u}</span>`).join('');
-      const miniHtml=active.map((name,i)=>{
-        const p=totalPcts[i];const oc=p===100?'#3fb950':p===0?'#f85149':'#d29922';
-        return `<div class="mini-prog">
-          <div class="mini-prog-name">${name}</div>
-          <div style="display:flex;align-items:center;gap:5px">
-            <div class="mini-prog-bar-bg" style="flex:1"><div class="mini-prog-bar-f" style="width:${p}%;background:${oc}"></div></div>
-            <span style="font-family:var(--font-mono);font-size:9px;color:${oc};min-width:28px;text-align:right">${p}%</span>
-          </div>
-        </div>`;
-      }).join('');
-      html+=`<div class="detail-chart-block">
-        <div class="detail-chart-head">
-          <span class="grp-badge" style="background:${gm.badge_bg};color:${gm.badge_txt}">${gKey}</span>
-          <span style="font-size:12px;color:var(--text2)">${gm.label.split('–')[1].trim()}</span>
+      _rekapCharts.push(chart);
+    });
+  },50);
+}
+
+// ── PER UPT ──────────────────────────────────────────────────────────────
+function renderNavUtabs(){
+  document.getElementById('utabs').innerHTML=UPTS.map(u=>`<button class="utab${u===activeUpt?' on':''}" onclick="setUpt('${u}')">${u}</button>`).join('');
+}
+
+function renderUptSummary(){
+  const n=WL.length-1;
+  let totT=0,totO=0,prevO=0;
+  ['G','T','P'].forEach(g=>{const c=groupAggAdj(activeUpt,g,n);const pv=groupAggAdj(activeUpt,g,Math.max(0,n-1));totT+=c.t;totO+=c.o;prevO+=pv.o;});
+  const prog=pct(totO,totT),pc=prog>=80?'#3fb950':prog>=50?'#d29922':'#f85149';
+  const delta=prevO-totO,ds=delta>0?`<span style="color:#3fb950">▼ ${delta.toLocaleString()}</span>`:delta<0?`<span style="color:#f85149">▲ ${Math.abs(delta).toLocaleString()}</span>`:`<span style="color:var(--text3)">—</span>`;
+  document.getElementById('srow-upt').innerHTML=`<div class="stat-row" style="margin-bottom:20px">
+    <div class="stat-card"><div class="slb">Target</div><div class="sv">${Math.round(totT).toLocaleString()}</div><div class="ssub">normalisasi</div></div>
+    <div class="stat-card"><div class="slb">Open</div><div class="sv" style="color:#f85149">${Math.round(totO).toLocaleString()}</div><div class="ssub">${ds} vs kemarin</div></div>
+    <div class="stat-card"><div class="slb">Progress</div><div class="sv" style="color:${pc}">${prog}%</div><div class="ssub">${Math.round(totT-totO).toLocaleString()} selesai</div></div>
+    <div class="stat-card"><div class="slb">Update</div><div class="sv" style="font-size:14px;padding-top:6px;font-family:var(--font-m)">${LAST_UPDATE}</div><div class="ssub">data terkini</div></div>
+  </div>`;
+}
+
+function renderUptPanels(){
+  const n=WL.length-1;
+  document.getElementById('panels').innerHTML=['G','T','P'].map(gKey=>{
+    const gm=GROUP_META[gKey];
+    const rows=Object.entries(D[activeUpt][gKey]).map(([name,arr])=>{
+      const t=arr[n].t,o=arr[n].o;if(!t&&!o)return'';
+      const p=pct(o,t),oc=oColor(o,t);
+      const d=arr[Math.max(0,n-1)].o-o;
+      const ds=d>0?`<span class="delta-tag" style="color:#3fb950">▼${d}</span>`:d<0?`<span class="delta-tag" style="color:#f85149">▲${Math.abs(d)}</span>`:'';
+      return `<div class="cat-row"><div class="cat-top"><span class="cat-name">${name}</span><span class="cat-nums" style="color:${oc}">${o.toLocaleString()}/${t.toLocaleString()}${ds}</span><span class="cat-pct" style="color:${oc}">${p}%</span></div><div class="cat-bar-bg"><div class="cat-bar-f" style="width:${p}%;background:${gm.bar}"></div></div></div>`;
+    }).filter(Boolean).join('');
+    const agg=groupAggAdj(activeUpt,gKey,n),gp=pct(agg.o,agg.t);
+    return `<div class="gpanel"><div class="gpanel-head"><span class="gpanel-badge" style="background:${gm.badge_bg};color:${gm.badge_txt}">${gKey}</span><span class="gpanel-label">${gm.label.split('–')[1].trim()}</span><span class="gpanel-pct" style="color:${oColor(agg.o,agg.t)}">${gp}%</span></div>${rows||'<div style="font-size:11px;color:var(--text3)">—</div>'}</div>`;
+  }).join('');
+}
+
+function renderUptCharts(){
+  _uptCharts=destroyCharts(_uptCharts);
+  const n=WL.length-1;
+  let sectionsHtml='';
+  const chartQueue=[];
+
+  ['G','T','P'].forEach(grp=>{
+    const gm=GROUP_META[grp];
+    const active=Object.entries(D[activeUpt][grp]).filter(([,arr])=>arr.some(p=>p.t>0||p.o>0));
+    if(!active.length)return;
+
+    let cardsHtml='';
+    active.forEach(([name,arr],i)=>{
+      const col=CAT_COLORS[i%CAT_COLORS.length];
+      const isROW=ROW_KEYS.includes(name);
+      const cid=`upt_${grp}_${i}`;
+      const lastO=arr[n].o,lastT=arr[n].t;
+      const p=pct(lastO,lastT),pc=p===100?'#3fb950':p===0?'#f85149':'#d29922';
+      const tData=WL.map((_,wi)=>{const v=arr[wi]?arr[wi].t:arr[n].t;return isROW?Math.round(v/ROW_DIVISOR):v;});
+      const oData=WL.map((_,wi)=>{const v=arr[wi]?arr[wi].o:arr[n].o;return isROW?Math.round(v/ROW_DIVISOR):v;});
+      chartQueue.push({cid,tData,oData,col});
+      cardsHtml+=`<div class="cat-chart-card" style="border-top:2px solid ${col}">
+        <div class="cat-chart-top">
+          <span class="cat-chart-name" style="color:${col}">${name}${isROW?' <span style="font-size:8px;opacity:0.5">÷100</span>':''}</span>
+          <span class="cat-chart-pct" style="color:${pc}">${p}%</span>
         </div>
-        <div class="chart-card">
-          <div class="chart-legend">${legendHtml}</div>
-          <div style="position:relative;width:100%;height:${barH}px"><canvas id="${cid}" role="img" aria-label="Detail ${gKey}"></canvas></div>
-          <div class="mini-prog-grid">${miniHtml}</div>
+        <div class="cat-chart-wrap"><canvas id="${cid}"></canvas></div>
+        <div class="cat-chart-foot">
+          <span>open: <span style="color:${col}">${isROW?lastO.toLocaleString()+' pohon':lastO.toLocaleString()}</span></span>
+          <span>target: ${arr[0].t.toLocaleString()}${isROW?' pohon':''}</span>
         </div>
       </div>`;
     });
-    window._detailChartDefs=defs;
-    return html;
-  }
 
-  const _rekapHTML=`
-    <div class="section-head">
-      <span class="section-title">Ringkasan</span>
-      <span class="section-rule"></span>
-      <span class="section-meta">${LAST_UPDATE}</span>
-    </div>
-    <div class="stat-row">
-      <div class="stat-card"><div class="stat-lbl">Progress UIT JBM</div><div class="stat-val" style="color:${tpc}">${totalPct}%</div><div class="stat-sub">normalisasi ROW B1</div></div>
-      <div class="stat-card"><div class="stat-lbl">Total Open</div><div class="stat-val" style="color:#f85149">${totalRawO.toLocaleString()}</div><div class="stat-sub">${totalDeltaStr} vs kemarin</div></div>
-      <div class="stat-card"><div class="stat-lbl">Total Target</div><div class="stat-val">${totalRawT.toLocaleString()}</div><div class="stat-sub">awal tahun 2026</div></div>
-      <div class="stat-card"><div class="stat-lbl">Selesai</div><div class="stat-val" style="color:#3fb950">${(totalRawT-totalRawO).toLocaleString()}</div><div class="stat-sub">${Math.round((totalRawT-totalRawO)/totalRawT*100)}% dari target</div></div>
-    </div>
-
-    <div class="note-box">
-      <strong>Catatan normalisasi:</strong> ROW B1 (vegetasi/pohon) dibagi ${ROW_DIVISOR} agar bobotnya proporsional dengan kategori lain (unit/titik).
-      Tanpa normalisasi ROW B1 mendominasi 77–91% total sehingga progress kategori lain tidak terbaca.
-    </div>
-
-    <div class="section-head">
-      <span class="section-title">Status per UPT</span>
-      <span class="section-rule"></span>
-      <span class="section-meta">diurutkan: progress tertinggi</span>
-    </div>
-    <div class="upt-grid">${uptCards}</div>
-
-    <div class="section-head">
-      <span class="section-title">Detail per Kategori</span>
-      <span class="section-rule"></span>
-      <span class="section-meta">Open / Target per UPT</span>
-    </div>
-    <div id="detail-charts-wrap">${buildDetailChart()}</div>
-
-    <div class="section-head">
-      <span class="section-title">Agregat G / T / P</span>
-      <span class="section-rule"></span>
-      <span class="section-meta">total 6 UPT</span>
-    </div>
-    <div class="panels-grid">${buildGroupAgg('G')}${buildGroupAgg('T')}${buildGroupAgg('P')}</div>
-  `;
-  document.getElementById('view-rekap').innerHTML=_rekapHTML;
-  setTimeout(renderDetailCharts,0);
-}
-
-function renderDetailCharts(){
-  if(!window._detailChartDefs)return;
-  window._detailChartDefs.forEach(({id,active,datasets})=>{
-    const canvas=document.getElementById(id);
-    if(!canvas)return;
-    if(canvas._chart)canvas._chart.destroy();
-    canvas._chart=new Chart(canvas.getContext('2d'),{
-      type:'bar',
-      data:{labels:active,datasets:datasets.map(ds=>({
-        label:ds.label,data:ds.data,
-        backgroundColor:ds.color+'99',borderColor:ds.color,borderWidth:0,borderRadius:3,
-      }))},
-      options:{
-        indexAxis:'y',responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{display:false},tooltip:{
-          backgroundColor:'#1f2937',borderColor:'rgba(255,255,255,0.1)',borderWidth:1,
-          titleColor:'#e6edf3',bodyColor:'#8b949e',
-          callbacks:{label:ctx=>{
-            const upt=ctx.dataset.label,si=ctx.dataIndex;
-            const ds=datasets.find(d=>d.label===upt);
-            const o=ctx.parsed.x,t=ds?ds.targets[si]:0;
-            return ` ${upt}: ${o.toLocaleString()} / ${t.toLocaleString()} (${pct(o,t)}%)`;
-          }}
-        }},
-        scales:{
-          x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{font:{size:9,family:'DM Mono'},color:'#484f58',callback:v=>v>=1000?(v/1000).toFixed(1)+'k':v}},
-          y:{grid:{display:false},ticks:{font:{size:9,family:'DM Mono'},color:'#8b949e'}}
-        }
-      }
-    });
+    sectionsHtml+=`<div class="charts-section">
+      <div class="charts-section-head">
+        <span class="charts-grp-badge" style="background:${gm.badge_bg};color:${gm.badge_txt}">${grp}</span>
+        <span style="font-size:11px;color:var(--text2)">${gm.label.split('–')[1].trim()}</span>
+      </div>
+      <div class="cat-charts-grid">${cardsHtml}</div>
+    </div>`;
   });
+
+  document.getElementById('charts-area').innerHTML=sectionsHtml;
+
+  setTimeout(()=>{
+    chartQueue.forEach(({cid,tData,oData,col})=>{
+      const canvas=document.getElementById(cid);
+      if(!canvas)return;
+      _uptCharts.push(makeLineChart(canvas,WL,tData,oData,col));
+    });
+  },50);
 }
 
+function renderUptView(){
+  renderNavUtabs();
+  renderUptSummary();
+  renderUptPanels();
+  renderUptCharts();
+}
+
+// ── MAIN ──────────────────────────────────────────────────────────────────
 function renderAll(){
   renderNavTabs();
-  renderRekap();
-  if(activeView==='upt'){
-    renderUtabs();
-    renderSummary();
-    renderPanels();
-    renderChartsRow();
-    renderLineCharts();
-  }
+  if(activeView==='rekap') renderRekap();
+  else renderUptView();
 }
 
-document.getElementById('last-update-top').textContent=LAST_UPDATE;
+document.getElementById('topdate').textContent=LAST_UPDATE;
 renderAll();
 </script>
 </body>
