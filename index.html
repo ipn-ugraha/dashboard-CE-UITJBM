@@ -203,7 +203,7 @@ const D = {
       "G2 MV Aparatus":     [{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0}],
       "G3 Switchyard AHI":  [{t:36,o:36},{t:36,o:35},{t:36,o:35},{t:36,o:35},{t:36,o:26},{t:36,o:19},{t:36,o:19},{t:36,o:19},{t:36,o:19},{t:36,o:19},{t:36,o:19},{t:36,o:19},{t:36,o:19},{t:36,o:19},{t:36,o:19}],
       "G4 GIS":             [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
-      "G5 Common Facility": [{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8}],
+      "G5 Common Facility": [{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:9,o:9},{t:9,o:9},{t:9,o:9},{t:9,o:9},{t:9,o:9}],
     },
     T:{
       "T1 Cable Sheath":    [{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3}],
@@ -433,10 +433,10 @@ function renderRekap(){
     <div class="note-box"><strong>Catatan normalisasi:</strong> ROW B1 (vegetasi/pohon) dibagi ${ROW_DIVISOR} agar bobotnya proporsional. Tanpa normalisasi ROW B1 mendominasi 77–91% total target.</div>
     <div class="sec-head"><span class="sec-title">Status per UPT</span><span class="sec-rule"></span><span class="sec-meta">diurutkan: progress tertinggi</span></div>
     <div class="upt-grid">${uptCards}</div>
-    <div class="sec-head"><span class="sec-title">Detail per Kategori</span><span class="sec-rule"></span><span class="sec-meta">Open per UPT</span></div>
-    ${detailHtml}
     <div class="sec-head"><span class="sec-title">Agregat G / T / P</span><span class="sec-rule"></span><span class="sec-meta">total 6 UPT</span></div>
-    <div class="panels-grid">${buildGrpPanel('G')}${buildGrpPanel('T')}${buildGrpPanel('P')}</div>`;
+    <div class="panels-grid">${buildGrpPanel('G')}${buildGrpPanel('T')}${buildGrpPanel('P')}</div>
+    <div class="sec-head"><span class="sec-title">Detail per Kategori</span><span class="sec-rule"></span><span class="sec-meta">Open per UPT</span></div>
+    ${detailHtml}`;
 
   setTimeout(()=>{
     chartDefs.forEach(({cid,active,datasets,barH})=>{
