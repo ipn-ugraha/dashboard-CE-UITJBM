@@ -435,6 +435,8 @@ function renderRekap(){
     <div class="upt-grid">${uptCards}</div>
     <div class="sec-head"><span class="sec-title">Agregat G / T / P</span><span class="sec-rule"></span><span class="sec-meta">total 6 UPT</span></div>
     <div class="panels-grid">${buildGrpPanel('G')}${buildGrpPanel('T')}${buildGrpPanel('P')}</div>
+    <div class="sec-head"><span class="sec-title">Tren per Kategori</span><span class="sec-rule"></span><span class="sec-meta">open mingguan · ROW B1 ÷ 100</span></div>
+    <div id="rekap-tren-area"></div>
     <div class="sec-head"><span class="sec-title">Detail per Kategori</span><span class="sec-rule"></span><span class="sec-meta">Open per UPT</span></div>
     ${detailHtml}`;
 
@@ -452,6 +454,113 @@ function renderRekap(){
       });
       _rekapCharts.push(chart);
     });
+
+    // Build tren charts per category (akumulasi 6 UPT) in rekap tab
+    const trenArea = document.getElementById('rekap-tren-area');
+    if (trenArea) {
+      const nWL = WL.length;
+      let trenHtml = '';
+      const trenQueue = [];
+
+      ['G','T','P'].forEach(grp => {
+        const gm = GROUP_META[grp];
+        const allSubs = new Set();
+        UPTS.forEach(u => Object.keys(D[u][grp]).forEach(k => allSubs.add(k)));
+        const activeSubs = [...allSubs].filter(name =>
+          UPTS.some(u => { const a=D[u][grp][name]; return a && a.some(p=>p.t>0||p.o>0); })
+        );
+        if (!activeSubs.length) return;
+
+        trenHtml += `<div style="margin-bottom:8px;display:flex;align-items:center;gap:8px;margin-top:16px;padding-bottom:8px;border-bottom:1px solid var(--line)">
+          <span style="font-family:var(--font-m);font-size:11px;padding:2px 8px;border-radius:4px;background:${gm.badge_bg};color:${gm.badge_txt}">${grp}</span>
+          <span style="font-size:11px;color:var(--text2)">${gm.label.split('–')[1].trim()}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:8px">`;
+
+        activeSubs.forEach((name, si) => {
+          const isROW = ROW_KEYS.includes(name);
+          const cid = 'tren_' + grp + '_' + si;
+
+          // Aggregate open across all UPTs per week
+          const aggO = WL.map((_,wi) => {
+            let total = 0;
+            UPTS.forEach(upt => {
+              const arr = D[upt][grp][name] || [];
+              const v = wi < arr.length ? arr[wi].o : (arr.length ? arr[arr.length-1].o : 0);
+              total += isROW ? v/ROW_DIVISOR : v;
+            });
+            return isROW ? Math.round(total) : total;
+          });
+          const aggT = WL.map((_,wi) => {
+            let total = 0;
+            UPTS.forEach(upt => {
+              const arr = D[upt][grp][name] || [];
+              const v = wi < arr.length ? arr[wi].t : (arr.length ? arr[arr.length-1].t : 0);
+              total += isROW ? v/ROW_DIVISOR : v;
+            });
+            return isROW ? Math.round(total) : total;
+          });
+
+          const lastO = aggO[aggO.length-1];
+          const lastT = aggT[aggT.length-1];
+          const p = lastT > 0 ? Math.round((1 - lastO/lastT)*100) : 100;
+          const pc = p===100?'#3fb950':p===0?'#f85149':'#d29922';
+
+          trenQueue.push({cid, name, aggO, aggT, isROW, p, pc});
+          trenHtml += `<div class="cat-chart-card" style="border-top:2px solid ${gm.bar}40">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px">
+              <span style="font-size:10px;font-weight:600;font-family:var(--font-m);color:${gm.badge_txt}">${name}${isROW?' <span style="font-size:8px;opacity:0.5">÷100</span>':''}</span>
+              <span style="font-size:11px;font-weight:700;font-family:var(--font-m);color:${pc}">${p}%</span>
+            </div>
+            <div style="position:relative;width:100%;height:110px"><canvas id="${cid}"></canvas></div>
+            <div style="display:flex;justify-content:space-between;margin-top:5px;font-family:var(--font-m);font-size:9px;color:var(--text3)">
+              <span>open: <span style="color:${gm.badge_txt}">${lastO.toLocaleString()}${isROW?' (adj)':''}</span></span>
+              <span>target: ${lastT.toLocaleString()}${isROW?' (adj)':''}</span>
+            </div>
+          </div>`;
+        });
+        trenHtml += '</div>';
+      });
+
+      trenArea.innerHTML = trenHtml;
+
+      trenQueue.forEach(({cid, aggO, aggT, isROW, name}) => {
+        const canvas = document.getElementById(cid);
+        if (!canvas) return;
+        const chart = new Chart(canvas, {
+          type: 'line',
+          data: {
+            labels: WL,
+            datasets: [
+              {label:'Target', data:aggT, borderColor:'rgba(88,166,255,0.35)', borderDash:[4,3], borderWidth:1.5, pointRadius:0, tension:0.3, fill:false},
+              {label:'Open',   data:aggO, borderColor:'#58a6ff', backgroundColor:'rgba(88,166,255,0.1)', borderWidth:2,
+               pointRadius: WL.map((_,i)=>i===WL.length-1?5:2), pointBackgroundColor:'#58a6ff', tension:0.3, fill:true}
+            ]
+          },
+          options: {
+            responsive:true, maintainAspectRatio:false, animation:{duration:300},
+            plugins: {
+              legend:{display:false},
+              tooltip:{
+                backgroundColor:'#1f2937', borderColor:'rgba(255,255,255,0.1)', borderWidth:1,
+                titleColor:'#e6edf3', bodyColor:'#8b949e',
+                callbacks:{label: c => {
+                  const o=c.parsed.y, t=aggT[c.dataIndex];
+                  const p=t>0?Math.round((1-o/t)*100):100;
+                  if(c.dataset.label==='Open') return ` Open: ${o.toLocaleString()}${isROW?' (adj)':''} — ${p}% selesai`;
+                  return ` Target: ${o.toLocaleString()}${isROW?' (adj)':''}`;
+                }}
+              }
+            },
+            scales:{
+              x:{grid:{color:'rgba(255,255,255,0.03)'}, ticks:{font:{size:8,family:'DM Mono'},color:'#484f58',autoSkip:true,maxTicksLimit:5,maxRotation:45}},
+              y:{beginAtZero:true, grid:{color:'rgba(255,255,255,0.03)'}, ticks:{font:{size:8,family:'DM Mono'},color:'#484f58',callback:v=>v>=1000?(v/1000).toFixed(1)+'k':v}}
+            }
+          }
+        });
+        _rekapCharts.push(chart);
+      });
+    }
   },50);
 }
 
