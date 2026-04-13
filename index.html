@@ -152,7 +152,8 @@ body::before{content:'';position:fixed;inset:0;background-image:
     <div class="upt-tabs" id="utabs"></div>
     <div id="srow-upt"></div>
     <div class="panels-grid" id="panels"></div>
-    <div class="sec-head" style="margin-top:24px"><span class="sec-title">Tren per Kategori</span><span class="sec-rule"></span><span class="sec-meta">target (putus) vs open (solid)</span></div>
+    <div style="display:flex;flex-wrap:wrap;gap:14px;font-family:var(--font-m);font-size:10px;color:var(--text3);margin-bottom:8px"><span><span class="leg-sq" style="background:rgba(88,166,255,0.4)"></span>Target</span><span><span class="leg-sq" style="background:#00d4ff"></span>Open</span><span><span style="display:inline-block;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:9px solid #ffa502;margin-right:4px;vertical-align:middle"></span>Tindak Lanjut</span></div>
+    <div class="sec-head" style="margin-top:4px"><span class="sec-title">Tren per Kategori</span><span class="sec-rule"></span><span class="sec-meta">target (putus) vs open (solid)</span></div>
     <div id="charts-area"></div>
   </div>
   <div class="footer">PT PLN Persero · Unit Induk Transmisi Jawa Timur dan Bali<br>Common Enemy Dashboard 2026 · ROW B1 ÷ 100 (normalisasi bobot)</div>
@@ -351,13 +352,14 @@ function calcProgress(upt){
 
 function destroyCharts(arr){arr.forEach(c=>{try{c.destroy()}catch(e){}});return[];}
 
-function makeLineChart(canvas, labels, tData, oData, col){
+function makeLineChart(canvas, labels, tData, oData, col, jData=null){
   return new Chart(canvas,{
     type:'line',
     data:{labels,datasets:[
       {label:'Target',data:tData,borderColor:'rgba(88,166,255,0.35)',borderDash:[4,3],borderWidth:1.5,pointRadius:0,tension:0.3,fill:false},
       {label:'Open',data:oData,borderColor:col,backgroundColor:col+'22',borderWidth:2,
-       pointRadius:labels.map((_,i)=>i===labels.length-1?5:2),pointBackgroundColor:col,tension:0.3,fill:true}
+       pointRadius:labels.map((_,i)=>i===labels.length-1?5:2),pointBackgroundColor:col,tension:0.3,fill:true},
+      ...(jData?[{label:'Tindak Lanjut',data:jData,borderWidth:0,pointRadius:labels.map((_,i)=>jData[i]!==null?9:0),pointStyle:'triangle',pointBackgroundColor:'#ffa502',pointBorderColor:'#ffa502',showLine:false,fill:false}]:[])
     ]},
     options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},
       plugins:{legend:{display:false},tooltip:{backgroundColor:'#1f2937',borderColor:'rgba(255,255,255,0.1)',borderWidth:1,titleColor:'#e6edf3',bodyColor:'#8b949e',
@@ -661,6 +663,8 @@ function renderUptCharts(){
       const tData=WL.map((_,wi)=>{const v=arr[wi]?arr[wi].t:arr[n].t;return isROW?Math.round(v/ROW_DIVISOR):v;});
       const oData=WL.map((_,wi)=>{const v=arr[wi]?arr[wi].o:arr[n].o;return isROW?Math.round(v/ROW_DIVISOR):v;});
       chartQueue.push({cid,tData,oData,col});
+      const tj = TINJUT_TODAY[activeUpt] || 0;
+      const tjBadge = (tj > 0 && isROW) ? `<span style="color:#ffa502;font-family:var(--font-m);font-size:9px;font-weight:600">▶ TL: ${tj.toLocaleString()}</span>` : '';
       cardsHtml+=`<div class="cat-chart-card" style="border-top:2px solid ${col}">
         <div class="cat-chart-top">
           <span class="cat-chart-name" style="color:${col}">${name}${isROW?' <span style="font-size:8px;opacity:0.5">÷100</span>':''}</span>
@@ -669,15 +673,20 @@ function renderUptCharts(){
         <div class="cat-chart-wrap"><canvas id="${cid}"></canvas></div>
         <div class="cat-chart-foot">
           <span>open: <span style="color:${col}">${isROW?lastO.toLocaleString()+' pohon':lastO.toLocaleString()}</span></span>
-          <span>target: ${arr[0].t.toLocaleString()}${isROW?' pohon':''}</span>
+          <span style="display:flex;align-items:center;gap:6px">${tjBadge}<span style="${tjBadge?'font-size:9px;color:var(--text3)':''}">target: ${arr[0].t.toLocaleString()}${isROW?' pohon':''}</span></span>
         </div>
       </div>`;
     });
 
+    const tjTotal = TINJUT_TODAY[activeUpt] || 0;
+    const tjSectionBadge = (tjTotal > 0 && grp === 'T') 
+      ? `<span style="margin-left:auto;font-family:var(--font-m);font-size:10px;font-weight:600;color:#ffa502;background:rgba(255,165,2,0.1);border:1px solid rgba(255,165,2,0.3);padding:2px 8px;border-radius:4px">▶ Tindak Lanjut Hari Ini: ${tjTotal.toLocaleString()}</span>`
+      : '';
     sectionsHtml+=`<div class="charts-section">
       <div class="charts-section-head">
         <span class="charts-grp-badge" style="background:${gm.badge_bg};color:${gm.badge_txt}">${grp}</span>
         <span style="font-size:11px;color:var(--text2)">${gm.label.split('–')[1].trim()}</span>
+        ${tjSectionBadge}
       </div>
       <div class="cat-charts-grid">${cardsHtml}</div>
     </div>`;
@@ -689,7 +698,14 @@ function renderUptCharts(){
     chartQueue.forEach(({cid,tData,oData,col})=>{
       const canvas=document.getElementById(cid);
       if(!canvas)return;
-      _uptCharts.push(makeLineChart(canvas,WL,tData,oData,col));
+      // Build jData: tinjut for last point on ROW B1 only
+      const totalTinjut = TINJUT_TODAY[activeUpt] || 0;
+      let jData = null;
+      if (totalTinjut > 0 && ROW_KEYS.includes(name)) {
+        const jVal = Math.round(totalTinjut/ROW_DIVISOR);
+        jData = WL.map((_,wi) => wi === WL.length-1 ? jVal : null);
+      }
+      _uptCharts.push(makeLineChart(canvas,WL,tData,oData,col,jData));
     });
   },50);
 }
