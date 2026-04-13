@@ -156,6 +156,8 @@ body::before{content:'';position:fixed;inset:0;background-image:
     <div class="sec-head" style="margin-top:4px"><span class="sec-title">Tren per Kategori</span><span class="sec-rule"></span><span class="sec-meta">target (putus) vs open (solid)</span></div>
     <div id="charts-area"></div>
   </div>
+  <div id="view-performance" style="display:none"></div>
+
   <div class="footer">PT PLN Persero · Unit Induk Transmisi Jawa Timur dan Bali<br>Common Enemy Dashboard 2026 · ROW B1 ÷ 100 (normalisasi bobot)</div>
 </div>
 <script>
@@ -378,13 +380,14 @@ function makeLineChart(canvas, labels, tData, oData, col, jData=null){
 // ── NAV ──────────────────────────────────────────────────────────────────
 function renderNavTabs(){
   document.getElementById('nav-tabs').innerHTML=
-    [{key:'rekap',label:'Rekap UIT JBM'},{key:'upt',label:'Per UPT'}]
+    [{key:'rekap',label:'Rekap UIT JBM'},{key:'upt',label:'Per UPT'},{key:'performance',label:'Performance'}]
     .map(t=>`<button class="nav-tab${t.key===activeView?' on':''}" onclick="setView('${t.key}')">${t.label}</button>`).join('');
 }
 function setView(v){
   activeView=v;
   document.getElementById('view-rekap').style.display=v==='rekap'?'':'none';
   document.getElementById('view-upt').style.display=v==='upt'?'':'none';
+  document.getElementById('view-performance').style.display=v==='performance'?'':'none';
   renderAll();
 }
 function setUpt(u){activeUpt=u;renderUptView();}
@@ -718,10 +721,194 @@ function renderUptView(){
 }
 
 // ── MAIN ──────────────────────────────────────────────────────────────────
+
+
+
+function renderPerformance(){
+  const n = WL.length - 1;
+
+  function calcSpeed(upt, normalize){
+    const opens = WL.map(function(_,wi){
+      var total = 0;
+      ['G','T','P'].forEach(function(g){
+        Object.entries(D[upt][g]).forEach(function(entry){
+          var name = entry[0], arr = entry[1];
+          if(wi < arr.length){
+            var o = arr[wi].o;
+            total += (normalize && ROW_KEYS.includes(name)) ? o/ROW_DIVISOR : o;
+          }
+        });
+      });
+      return total;
+    });
+    var reductions = opens.slice(1).map(function(o,i){ return opens[i]-o; });
+    var totalReduced = opens[0] - opens[n];
+    var avgWeekly = totalReduced / n;
+    var activeWeeks = reductions.filter(function(r){return r>0;}).length;
+    var avgActive = activeWeeks > 0 ? totalReduced/activeWeeks : 0;
+    var bestVal = Math.max.apply(null, reductions);
+    var bestIdx = reductions.indexOf(bestVal);
+    var bestPeriod = WL[bestIdx]+'→'+WL[bestIdx+1];
+    var pctDone = opens[0]>0 ? Math.round((totalReduced/opens[0])*100) : 0;
+    return {upt:upt, opens:opens, totalReduced:totalReduced, avgWeekly:avgWeekly,
+            avgActive:avgActive, activeWeeks:activeWeeks, bestVal:bestVal,
+            bestPeriod:bestPeriod, pctDone:pctDone, initialOpen:opens[0], currentOpen:opens[n]};
+  }
+
+  function th(txt, align){
+    align = align||'left';
+    return '<th style="padding:8px 12px;text-align:'+align+';font-family:var(--font-m);font-size:10px;color:var(--text3);font-weight:500;letter-spacing:0.08em">'+txt+'</th>';
+  }
+  function td(content, align, extra){
+    align = align||'left';
+    extra = extra||'';
+    return '<td style="padding:11px 12px;text-align:'+align+';'+extra+'">'+content+'</td>';
+  }
+
+  function buildTable(data, normalize){
+    var sorted = data.slice().sort(function(a,b){return b.avgWeekly-a.avgWeekly;});
+    var maxAvg = Math.max.apply(null, sorted.map(function(r){return r.avgWeekly;}));
+    var medals = ['🥇','🥈','🥉'];
+
+    var rows = sorted.map(function(r,i){
+      var col = UPT_COLORS[r.upt];
+      var barW = maxAvg>0 ? Math.round(r.avgWeekly/maxAvg*100) : 0;
+      var medal = medals[i] || (i+1)+'.';
+      var pc = r.pctDone>=70?'#00e5a0':r.pctDone>=40?'#ffa502':'#ff4757';
+      var bar = '<div style="background:rgba(0,212,255,0.08);border-radius:3px;height:6px;overflow:hidden">'
+              + '<div style="width:'+barW+'%;height:100%;background:'+col+';border-radius:3px"></div>'
+              + '</div>';
+      return '<tr style="border-bottom:1px solid rgba(0,212,255,0.05)">'
+        + td('<span style="font-size:15px">'+medal+'</span>')
+        + td('<span style="font-family:var(--font-m);font-size:12px;font-weight:700;color:'+col+'">'+r.upt+'</span>')
+        + td('<span style="color:var(--accent);font-weight:600;font-family:var(--font-m);font-size:12px">'+r.avgWeekly.toFixed(1)+'</span><span style="color:var(--text3);font-size:10px;font-family:var(--font-m)">/minggu</span>', 'right')
+        + td('<span style="font-family:var(--font-m);font-size:11px;color:var(--text2)">'+r.avgActive.toFixed(1)+'</span><span style="color:var(--text3);font-size:9px;font-family:var(--font-m)">/mggu aktif</span>', 'right')
+        + td('<span style="font-family:var(--font-m);font-size:11px;color:var(--text3)">'+r.activeWeeks+'/14</span>', 'center')
+        + td('<span style="font-family:var(--font-m);font-size:11px;font-weight:600;color:'+pc+'">'+r.pctDone+'%</span>', 'right')
+        + td(bar, 'left', 'min-width:130px')
+        + td('<span style="font-family:var(--font-m);font-size:10px;color:var(--text3)">+'+r.bestVal.toFixed(0)+' ('+r.bestPeriod+')</span>')
+        + '</tr>';
+    }).join('');
+
+    var thead = '<thead><tr style="border-bottom:1px solid rgba(0,212,255,0.15)">'
+      + th('#') + th('UPT') + th('RATA-RATA/MINGGU','right')
+      + th('SAAT AKTIF','right') + th('MINGGU AKTIF','center')
+      + th('% SELESAI','right') + th('KECEPATAN') + th('TERBAIK')
+      + '</tr></thead>';
+    return '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
+      + thead + '<tbody>'+rows+'</tbody></table></div>';
+  }
+
+  function buildPrediction(normData){
+    var lastDateMs = new Date('2026-04-13').getTime();
+    var endOfYear  = new Date('2026-12-31').getTime();
+    var msPerWeek  = 7*24*3600*1000;
+    var weeksLeft  = (endOfYear - lastDateMs) / msPerWeek;
+
+    var enriched = normData.map(function(r){
+      var wn = r.avgWeekly > 0 ? r.currentOpen / r.avgWeekly : Infinity;
+      var fms = lastDateMs + wn * msPerWeek;
+      var will = fms <= endOfYear;
+      var oEOY = r.avgWeekly > 0 ? Math.max(0, r.currentOpen - r.avgWeekly*weeksLeft) : r.currentOpen;
+      var pEOY = r.initialOpen > 0 ? Math.round((r.initialOpen-oEOY)/r.initialOpen*100) : 0;
+      var fd = new Date(fms);
+      var fs = wn===Infinity ? '—' : fd.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
+      var speedMin = (!will && r.avgWeekly>0) ? (r.currentOpen/weeksLeft).toFixed(1) : null;
+      return {upt:r.upt, currentOpen:r.currentOpen, avgWeekly:r.avgWeekly, initialOpen:r.initialOpen,
+              wn:wn, fms:fms, will:will, oEOY:oEOY, pEOY:pEOY, fs:fs, speedMin:speedMin, col:UPT_COLORS[r.upt]};
+    }).sort(function(a,b){ return a.will===b.will ? a.fms-b.fms : (b.will?1:-1); });
+
+    var canFinish = enriched.filter(function(r){return r.will;}).length;
+    var wlr = Math.round(weeksLeft);
+    var needSpeed = enriched.filter(function(r){return r.speedMin;})
+      .map(function(r){return r.upt.slice(0,3)+' '+r.speedMin;}).join(', ') || '—';
+
+    var sc = '<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:20px">'
+      + '<div class="stat-card"><div class="slb">Sisa Waktu</div><div class="sv" style="color:var(--accent)">'+wlr+'</div><div class="ssub">minggu hingga 31 Des 2026</div></div>'
+      + '<div class="stat-card"><div class="slb">Prediksi Selesai</div><div class="sv" style="color:#00e5a0">'+canFinish+'</div><div class="ssub">UPT selesai sebelum akhir 2026</div></div>'
+      + '<div class="stat-card"><div class="slb">Perlu Akselerasi</div><div class="sv" style="color:#ff4757">'+(6-canFinish)+'</div><div class="ssub">UPT belum bisa selesai</div></div>'
+      + '<div class="stat-card"><div class="slb">Kec. Min. Dibutuhkan</div><div class="sv" style="color:#ffa502;font-size:14px;padding-top:6px;font-family:var(--font-m)">'+needSpeed+'</div><div class="ssub">anomali/minggu agar selesai 2026</div></div>'
+      + '</div>';
+
+    var rows = enriched.map(function(r){
+      var barCol = r.will ? '#00e5a0' : r.pEOY>=80 ? '#ffa502' : '#ff4757';
+      var badge = r.will
+        ? '<span style="background:rgba(0,229,160,0.12);color:#00e5a0;border:1px solid rgba(0,229,160,0.25);font-family:var(--font-m);font-size:10px;padding:3px 10px;border-radius:4px;font-weight:600">&#10003; Selesai sebelum 2027</span>'
+        : '<span style="background:rgba(255,71,87,0.1);color:#ff4757;border:1px solid rgba(255,71,87,0.2);font-family:var(--font-m);font-size:10px;padding:3px 10px;border-radius:4px">&#10007; Belum selesai akhir 2026</span>';
+      var speedNote = r.speedMin ? '<div style="font-family:var(--font-m);font-size:9px;color:#ffa502;margin-top:2px">Butuh min. '+r.speedMin+'/mggu</div>' : '';
+      var bar = '<div style="background:rgba(0,212,255,0.08);border-radius:3px;height:8px;overflow:hidden;margin-bottom:3px">'
+              + '<div style="width:'+Math.min(100,r.pEOY)+'%;height:100%;background:'+barCol+';border-radius:3px"></div></div>'
+              + '<div style="font-family:var(--font-m);font-size:9px;color:var(--text3)">'+r.pEOY+'% selesai akhir 2026</div>'
+              + speedNote;
+      return '<tr style="border-bottom:1px solid rgba(0,212,255,0.05)">'
+        + td('<span style="font-family:var(--font-m);font-size:12px;font-weight:700;color:'+r.col+'">'+r.upt+'</span>')
+        + td('<span style="font-family:var(--font-m);font-size:12px;color:var(--text2)">'+r.currentOpen.toFixed(0)+'</span>','right')
+        + td('<span style="color:var(--accent);font-weight:600;font-family:var(--font-m);font-size:12px">'+r.avgWeekly.toFixed(1)+'</span><span style="color:var(--text3);font-size:10px;font-family:var(--font-m)">/mggu</span>','right')
+        + td('<span style="font-family:var(--font-m);font-size:11px;color:'+(r.will?'#00e5a0':'#ff4757')+';font-weight:600">'+r.fs+'</span>','right')
+        + td('<span style="font-family:var(--font-m);font-size:11px;color:var(--text2)">'+r.oEOY.toFixed(0)+'</span><span style="color:var(--text3);font-size:9px"> anomali</span>','right')
+        + td(bar,'left','min-width:160px')
+        + td(badge)
+        + '</tr>';
+    }).join('');
+
+    var thead = '<thead><tr style="border-bottom:1px solid rgba(0,212,255,0.15)">'
+      + th('UPT') + th('OPEN SKRG','right') + th('KECEPATAN','right')
+      + th('PREDIKSI SELESAI','right') + th('SISA AKHIR 2026','right')
+      + th('PROGRESS S/D AKHIR 2026') + th('STATUS')
+      + '</tr></thead>';
+
+    return sc
+      + '<div class="chart-card" style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
+      + thead + '<tbody>'+rows+'</tbody></table></div>'
+      + '<div class="note-box" style="margin-top:12px;font-size:10px">'
+      + '<strong>Asumsi:</strong> Kecepatan konstan = rata-rata mingguan sejak 08 Feb 2026 (normalisasi ROW B1 ÷ 100). '
+      + 'Sisa waktu: <strong>'+wlr+' minggu</strong> (13 Apr → 31 Des 2026). '
+      + '"Butuh X/mggu" = kecepatan minimum agar selesai tepat akhir 2026.</div>';
+  }
+
+  var rawData  = UPTS.map(function(u){return calcSpeed(u, false);});
+  var normData = UPTS.map(function(u){return calcSpeed(u, true);});
+  var normSorted = normData.slice().sort(function(a,b){return b.avgWeekly-a.avgWeekly;});
+  var medals = ['🥇','🥈','🥉'];
+
+  var summaryCards = normSorted.map(function(r,i){
+    var col = UPT_COLORS[r.upt];
+    var m = medals[i]||'';
+    return '<div class="stat-card" style="border-top:2px solid '+col+'">'
+      + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
+      + '<span style="font-size:16px">'+m+'</span>'
+      + '<span style="font-family:var(--font-m);font-size:11px;font-weight:700;color:'+col+'">'+r.upt+'</span></div>'
+      + '<div style="font-size:22px;font-weight:800;color:var(--accent);font-family:var(--font-d);line-height:1">'+r.avgWeekly.toFixed(1)+'</div>'
+      + '<div style="font-family:var(--font-m);font-size:10px;color:var(--text3);margin-top:4px">anomali/minggu (adj)</div>'
+      + '<div style="font-family:var(--font-m);font-size:10px;color:var(--text2);margin-top:6px">'+r.pctDone+'% selesai · '+r.activeWeeks+'/14 minggu aktif</div>'
+      + '</div>';
+  }).join('');
+
+  var noteBox = '<div class="note-box" style="margin-bottom:18px">'
+    + '<strong>Cara baca:</strong> Rata-rata anomali yang diselesaikan per minggu sejak 08 Feb 2026. '
+    + 'Versi <strong>normalisasi</strong> menggunakan ROW B1 ÷ 100. '
+    + 'Versi <strong>tanpa normalisasi</strong> menggunakan angka mentah.</div>';
+
+  var html = ''
+    + '<div class="sec-head"><span class="sec-title">Performance UPT</span><span class="sec-rule"></span><span class="sec-meta">Kecepatan penyelesaian anomali · '+LAST_UPDATE+'</span></div>'
+    + noteBox
+    + '<div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:24px">'+summaryCards+'</div>'
+    + '<div class="sec-head" style="margin-top:4px"><span class="sec-title">Dengan Normalisasi ROW B1 ÷ 100</span><span class="sec-rule"></span><span class="sec-meta">bobot proporsional</span></div>'
+    + '<div class="chart-card" style="margin-bottom:20px">'+buildTable(normData, true)+'</div>'
+    + '<div class="sec-head"><span class="sec-title">Tanpa Normalisasi</span><span class="sec-rule"></span><span class="sec-meta">angka mentah · ROW B1 dalam satuan pohon</span></div>'
+    + '<div class="chart-card" style="margin-bottom:20px">'+buildTable(rawData, false)+'</div>'
+    + '<div class="note-box" style="margin-bottom:0;font-size:10px"><strong>Minggu Aktif:</strong> Jumlah minggu open benar-benar berkurang. Total 14 periode 08 Feb – 13 Apr 2026. <strong>Terbaik:</strong> Periode penyelesaian terbanyak dalam satu minggu.</div>'
+    + '<div class="sec-head" style="margin-top:28px"><span class="sec-title">Prediksi Penyelesaian Akhir Tahun</span><span class="sec-rule"></span><span class="sec-meta">asumsi kecepatan konstan · normalisasi ROW B1 ÷ 100</span></div>'
+    + buildPrediction(normData);
+
+  document.getElementById('view-performance').innerHTML = html;
+}
+
 function renderAll(){
   renderNavTabs();
   if(activeView==='rekap') renderRekap();
-  else renderUptView();
+  else if(activeView==='upt') renderUptView();
+  else if(activeView==='performance') renderPerformance();
 }
 
 document.getElementById('topdate').textContent=LAST_UPDATE;
