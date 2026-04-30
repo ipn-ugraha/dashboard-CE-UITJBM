@@ -122,289 +122,14 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0}
   <meta http-equiv="refresh" content="3600">
 </head>
 <body>
-<div id="gi-bg-layer" style="position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden">
-<canvas id="elec-canvas" style="position:absolute;inset:0;width:100%;height:100%"></canvas>
+<div id="loading-overlay" style="position:fixed;inset:0;z-index:9999;background:rgba(8,12,16,0.97);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px">
+  <div style="width:48px;height:48px;border:3px solid rgba(88,166,255,0.2);border-top-color:#58a6ff;border-radius:50%;animation:spin 0.8s linear infinite"></div>
+  <div id="loading-msg" style="font-family:'DM Mono',monospace;font-size:13px;color:#8b949e">Memuat data...</div>
+  <div style="font-family:'DM Mono',monospace;font-size:10px;color:#484f58">Common Enemy Dashboard · UIT JBM</div>
 </div>
-<script>
-(function(){
-  var canvas = document.getElementById('elec-canvas');
-  if(!canvas) return;
-  var ctx = canvas.getContext('2d');
-  var W, H;
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
 
-  function resize(){
-    W = canvas.width = window.innerWidth;
-    H = canvas.height = window.innerHeight;
-  }
-  resize();
-  window.addEventListener('resize', resize);
 
-  // ── Palette ──────────────────────────────────────────────
-  var COLORS = ['#58a6ff','#3fb950','#a371f7','#d29922','#f0883e','#f85149'];
-  var BOLT_COLOR = '#58a6ff';
-
-  // ── Bolt class ───────────────────────────────────────────
-  function Bolt(){
-    this.reset();
-  }
-  Bolt.prototype.reset = function(){
-    this.x = Math.random() * W;
-    this.y = 0;
-    this.points = [];
-    this.color = COLORS[Math.floor(Math.random()*COLORS.length)];
-    this.alpha = 0;
-    this.life = 0;
-    this.maxLife = 18 + Math.floor(Math.random()*20);
-    this.width = 1 + Math.random()*1.5;
-    this.glowWidth = 4 + Math.random()*8;
-    this.vertical = Math.random() > 0.3; // 70% vertical
-    this._generate();
-  };
-  Bolt.prototype._generate = function(){
-    var pts = [];
-    var cx = this.x, cy = 0;
-    var steps = 6 + Math.floor(Math.random()*8);
-    var length = (this.vertical ? H : W) * (0.3 + Math.random()*0.5);
-    for(var s=0; s<=steps; s++){
-      var t = s/steps;
-      if(this.vertical){
-        cx = this.x + (Math.random()-0.5)*80;
-        cy = t * length;
-      } else {
-        cx = this.x + t * length;
-        cy = this.y + (Math.random()-0.5)*60;
-      }
-      pts.push({x:cx, y:cy});
-      // branch
-      if(s > 0 && s < steps && Math.random() > 0.6){
-        var branch = [];
-        var bx = cx, by = cy;
-        var bsteps = 3 + Math.floor(Math.random()*3);
-        for(var b=0; b<bsteps; b++){
-          bx += (Math.random()-0.5)*40 + (this.vertical?20:-10);
-          by += this.vertical?(20+Math.random()*20):(Math.random()-0.5)*20;
-          branch.push({x:bx,y:by});
-        }
-        pts.push({branch:branch, from:{x:cx,y:cy}});
-      }
-    }
-    this.points = pts;
-    if(!this.vertical){
-      this.x = Math.random() * W * 0.3;
-      this.y = Math.random() * H;
-    }
-  };
-  Bolt.prototype.draw = function(){
-    if(this.life >= this.maxLife){ this.reset(); return; }
-    this.life++;
-    // alpha curve: fast in, slow out
-    var t = this.life / this.maxLife;
-    this.alpha = t < 0.2 ? t/0.2 : 1 - ((t-0.2)/0.8);
-    this.alpha = Math.max(0, this.alpha);
-
-    var pts = this.points;
-    ctx.save();
-    ctx.globalAlpha = this.alpha * 0.9;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = this.color;
-
-    // draw main bolt
-    ctx.shadowBlur = this.glowWidth;
-    ctx.shadowColor = this.color;
-    ctx.lineWidth = this.width;
-    ctx.beginPath();
-    var started = false;
-    for(var i=0; i<pts.length; i++){
-      if(pts[i].branch) continue;
-      if(!started){ ctx.moveTo(pts[i].x, pts[i].y); started=true; }
-      else { ctx.lineTo(pts[i].x, pts[i].y); }
-    }
-    ctx.stroke();
-
-    // draw branches
-    for(var i=0; i<pts.length; i++){
-      if(!pts[i].branch) continue;
-      ctx.globalAlpha = this.alpha * 0.5;
-      ctx.lineWidth = this.width * 0.6;
-      ctx.shadowBlur = this.glowWidth * 0.6;
-      ctx.beginPath();
-      ctx.moveTo(pts[i].from.x, pts[i].from.y);
-      var br = pts[i].branch;
-      for(var b=0; b<br.length; b++) ctx.lineTo(br[b].x, br[b].y);
-      ctx.stroke();
-    }
-
-    // spark at end point
-    if(t > 0.1 && t < 0.5){
-      var last = null;
-      for(var i=pts.length-1; i>=0; i--){
-        if(!pts[i].branch){ last=pts[i]; break; }
-      }
-      if(last){
-        ctx.globalAlpha = this.alpha * (1-t*2);
-        ctx.shadowBlur = 20;
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(last.x, last.y, 2+Math.random()*2, 0, Math.PI*2);
-        ctx.fill();
-      }
-    }
-    ctx.restore();
-  };
-
-  // ── Particle class ───────────────────────────────────────
-  function Particle(){
-    this.reset();
-  }
-  Particle.prototype.reset = function(){
-    this.x = Math.random() * W;
-    this.y = Math.random() * H;
-    this.r = 0.5 + Math.random()*1.5;
-    this.alpha = 0.1 + Math.random()*0.6;
-    this.da = (Math.random()*0.02 + 0.005) * (Math.random()>0.5?1:-1);
-    this.color = COLORS[Math.floor(Math.random()*COLORS.length)];
-  };
-  Particle.prototype.draw = function(){
-    this.alpha += this.da;
-    if(this.alpha > 0.8 || this.alpha < 0.05) this.da *= -1;
-    ctx.save();
-    ctx.globalAlpha = this.alpha;
-    ctx.fillStyle = this.color;
-    ctx.shadowBlur = 6;
-    ctx.shadowColor = this.color;
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.r, 0, Math.PI*2);
-    ctx.fill();
-    ctx.restore();
-  };
-
-  // ── Grid ─────────────────────────────────────────────────
-  function drawGrid(){
-    ctx.save();
-    ctx.globalAlpha = 0.04;
-    ctx.strokeStyle = '#58a6ff';
-    ctx.lineWidth = 0.5;
-    var step = 60;
-    for(var x=0; x<W; x+=step){
-      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
-    }
-    for(var y=0; y<H; y+=step){
-      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
-    }
-    // fine grid
-    ctx.globalAlpha = 0.02;
-    step = 15;
-    for(var x=0; x<W; x+=step){
-      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
-    }
-    for(var y=0; y<H; y+=step){
-      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
-    }
-    ctx.restore();
-  }
-
-  // ── Energy orbs ──────────────────────────────────────────
-  var orbs = [
-    {x:0.2,y:0.5,r:200,color:'rgba(31,107,235,0.06)',phase:0,speed:0.008},
-    {x:0.8,y:0.25,r:260,color:'rgba(88,166,255,0.04)',phase:2,speed:0.006},
-    {x:0.55,y:0.85,r:180,color:'rgba(63,185,80,0.04)',phase:4,speed:0.007},
-    {x:0.1,y:0.1,r:140,color:'rgba(163,113,247,0.04)',phase:1,speed:0.009},
-  ];
-  function drawOrbs(t){
-    for(var i=0; i<orbs.length; i++){
-      var o = orbs[i];
-      var pulse = 1 + 0.08*Math.sin(t*o.speed+o.phase);
-      ctx.save();
-      var grd = ctx.createRadialGradient(o.x*W,o.y*H,0,o.x*W,o.y*H,o.r*pulse);
-      grd.addColorStop(0, o.color);
-      grd.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = grd;
-      ctx.beginPath();
-      ctx.arc(o.x*W, o.y*H, o.r*pulse, 0, Math.PI*2);
-      ctx.fill();
-      ctx.restore();
-    }
-  }
-
-  // ── Horizontal energy lines ───────────────────────────────
-  var hlines = [
-    {y:0.3, alpha:0, da:0.004, maxA:0.15},
-    {y:0.6, alpha:0.05, da:0.003, maxA:0.12},
-    {y:0.8, alpha:0, da:0.006, maxA:0.1},
-  ];
-  function drawHlines(){
-    for(var i=0; i<hlines.length; i++){
-      var l = hlines[i];
-      l.alpha += l.da;
-      if(l.alpha > l.maxA || l.alpha < 0) l.da *= -1;
-      ctx.save();
-      ctx.globalAlpha = Math.max(0,l.alpha);
-      var grd = ctx.createLinearGradient(0,0,W,0);
-      grd.addColorStop(0,'rgba(88,166,255,0)');
-      grd.addColorStop(0.3,'rgba(88,166,255,0.8)');
-      grd.addColorStop(0.7,'rgba(88,166,255,0.8)');
-      grd.addColorStop(1,'rgba(88,166,255,0)');
-      ctx.strokeStyle = grd;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(0, l.y*H);
-      ctx.lineTo(W, l.y*H);
-      ctx.stroke();
-      ctx.restore();
-    }
-  }
-
-  // ── Init ─────────────────────────────────────────────────
-  var BOLT_COUNT = 12;
-  var PARTICLE_COUNT = 40;
-  var bolts = [];
-  var particles = [];
-
-  for(var i=0; i<BOLT_COUNT; i++){
-    var b = new Bolt();
-    b.life = Math.floor(Math.random()*b.maxLife); // stagger starts
-    bolts.push(b);
-  }
-  for(var i=0; i<PARTICLE_COUNT; i++){
-    particles.push(new Particle());
-  }
-
-  // ── Background gradient (static) ─────────────────────────
-  function drawBgGradient(){
-    var grd = ctx.createRadialGradient(W*0.25,H*0.4,0,W*0.25,H*0.4,W*0.6);
-    grd.addColorStop(0,'rgba(22,50,90,0.5)');
-    grd.addColorStop(1,'rgba(8,12,16,0)');
-    ctx.fillStyle = grd;
-    ctx.fillRect(0,0,W,H);
-    var grd2 = ctx.createRadialGradient(W*0.8,H*0.3,0,W*0.8,H*0.3,W*0.5);
-    grd2.addColorStop(0,'rgba(13,45,94,0.4)');
-    grd2.addColorStop(1,'rgba(8,12,16,0)');
-    ctx.fillStyle = grd2;
-    ctx.fillRect(0,0,W,H);
-  }
-
-  // ── Animate ───────────────────────────────────────────────
-  var frame = 0;
-  function animate(){
-    requestAnimationFrame(animate);
-    frame++;
-
-    // Clear with dark bg
-    ctx.fillStyle = '#080c10';
-    ctx.fillRect(0,0,W,H);
-
-    // Layers
-    drawBgGradient();
-    drawOrbs(frame);
-    drawGrid();
-    drawHlines();
-    for(var i=0; i<particles.length; i++) particles[i].draw();
-    for(var i=0; i<bolts.length; i++) bolts[i].draw();
-  }
-  animate();
-})();
-</script>
 <canvas id="electric-bg" style="position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none"></canvas>
 <div id="electric-overlay" style="position:fixed;inset:0;z-index:1;pointer-events:none;
   background:radial-gradient(ellipse 80% 60% at 20% 50%,rgba(0,150,255,0.08) 0%,transparent 70%),
@@ -443,177 +168,289 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0}
     <div id="charts-area"></div>
   </div>
   <div id="view-performance" style="display:none"></div>
+  <div id="view-input" style="display:none"></div>
 
   <div class="footer">PT PLN Persero · Unit Induk Transmisi Jawa Timur dan Bali<br>Common Enemy Dashboard 2026 · ROW B1 ÷ 100 (normalisasi bobot)</div>
 </div>
 <script>
-const WL = ["08 Feb","15 Feb","22 Feb","01 Mar","08 Mar","15 Mar","22 Mar","29 Mar","05 Apr","08 Apr","09 Apr","10 Apr","11 Apr","12 Apr","13 Apr","14 Apr","15 Apr","16 Apr","17 Apr","18 Apr","19 Apr","20 Apr","21 Apr","22 Apr","23 Apr","24 Apr","25 Apr","26 Apr","27 Apr","28 Apr"];
-const LAST_UPDATE = "28 April 2026";
-const TINJUT_TODAY = {"MALANG": 0, "SURABAYA": 12, "GRESIK": 0, "BALI": 0, "MADIUN": 0, "PROBOLINGGO": 0};
+// ── Google Sheets Published CSV Config ─────────────────────────────────
+// Ganti SHEET_ID dengan ID Google Sheet Anda
+// Format URL: https://docs.google.com/spreadsheets/d/SHEET_ID/pub?gid=GID&single=true&output=csv
+// Setiap tab UPT memiliki GID masing-masing
 
+const SHEET_CONFIG = {
+  PUB_KEY: '2PACX-1vQOh5clG1bCxlAVDY0kzP4nCR5Vm24UA2aKCpPQ6lsq7Q2uc6RzMt0h4yG-G8V6P7zHerd8ivRF3ngr',
+  GIDS: {
+    CONFIG:      '105737366',
+    MALANG:      '1688445291',
+    SURABAYA:    '868801169',
+    GRESIK:      '634559717',
+    BALI:        '1051401301',
+    MADIUN:      '1862467405',
+    PROBOLINGGO: '30044770',
+    BA:          '1594720276',        // Isi GID tab BA setelah import ke Google Sheets
+  }
+};
 
-const D = {
-  MALANG:{
-    G:{
-      "G1 AHI Trafo":       [{t:7,o:7},{t:7,o:7},{t:7,o:6},{t:7,o:6},{t:7,o:6},{t:7,o:6},{t:7,o:6},{t:7,o:6},{t:7,o:5},{t:7,o:5},{t:7,o:5},{t:7,o:5},{t:7,o:4},{t:7,o:4},{t:7,o:4},{t:7,o:4},{t:7,o:4},{t:7,o:4},{t:7,o:4},{t:7,o:4},{t:7,o:4},{t:7,o:4},{t:7,o:4},{t:7,o:4},{t:7,o:4},{t:7,o:4},{t:7,o:4},{t:7,o:4},{t:7,o:4},{t:7,o:4}],
-      "G1 Anti Binatang":   [{t:22,o:22},{t:22,o:22},{t:22,o:22},{t:22,o:22},{t:22,o:22},{t:22,o:22},{t:22,o:22},{t:22,o:22},{t:22,o:22},{t:22,o:22},{t:22,o:22},{t:22,o:22},{t:22,o:10},{t:22,o:10},{t:22,o:10},{t:22,o:10},{t:22,o:10},{t:22,o:10},{t:22,o:1},{t:22,o:1},{t:22,o:1},{t:22,o:1},{t:22,o:1},{t:22,o:1},{t:22,o:1},{t:22,o:1},{t:22,o:1},{t:22,o:1},{t:22,o:1},{t:22,o:1}],
-      "G1 Relay Internal":  [{t:13,o:13},{t:13,o:13},{t:13,o:13},{t:13,o:13},{t:13,o:13},{t:13,o:13},{t:13,o:11},{t:13,o:11},{t:13,o:11},{t:13,o:11},{t:13,o:11},{t:13,o:11},{t:13,o:11},{t:13,o:11},{t:13,o:11},{t:13,o:11},{t:13,o:11},{t:13,o:11},{t:13,o:11},{t:13,o:11},{t:13,o:11},{t:13,o:11},{t:13,o:11},{t:13,o:11},{t:13,o:11},{t:13,o:11},{t:13,o:11},{t:13,o:11},{t:13,o:11},{t:13,o:8}],
-      "G2 MV Aparatus":     [{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:4},{t:5,o:4},{t:5,o:4},{t:5,o:0},{t:5,o:0},{t:5,o:0},{t:5,o:0},{t:5,o:0},{t:5,o:0},{t:5,o:0},{t:5,o:0},{t:5,o:0},{t:5,o:0},{t:5,o:0}],
-      "G3 Switchyard AHI":  [{t:67,o:67},{t:67,o:67},{t:67,o:67},{t:67,o:65},{t:67,o:65},{t:67,o:65},{t:67,o:65},{t:67,o:65},{t:67,o:64},{t:67,o:61},{t:67,o:61},{t:67,o:61},{t:67,o:60},{t:67,o:60},{t:67,o:60},{t:67,o:60},{t:67,o:57},{t:67,o:41},{t:67,o:36},{t:67,o:36},{t:67,o:36},{t:67,o:36},{t:67,o:36},{t:67,o:33},{t:67,o:33},{t:67,o:34},{t:67,o:34},{t:67,o:34},{t:67,o:34},{t:67,o:30}],
-      "G4 GIS":             [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
-      "G5 Common Facility": [{t:18,o:18},{t:18,o:17},{t:18,o:15},{t:18,o:12},{t:18,o:10},{t:18,o:7},{t:18,o:7},{t:18,o:7},{t:18,o:7},{t:18,o:7},{t:18,o:9},{t:18,o:9},{t:18,o:9},{t:18,o:9},{t:18,o:9},{t:18,o:9},{t:18,o:8},{t:18,o:8},{t:18,o:8},{t:18,o:8},{t:18,o:8},{t:18,o:8},{t:18,o:8},{t:18,o:8},{t:18,o:8},{t:18,o:8},{t:18,o:8},{t:18,o:8},{t:18,o:8},{t:18,o:8}],
-    },
-    T:{
-      "T1 Cable Sheath":    [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
-      "T2 SUTT AHI":        [{t:235,o:235},{t:235,o:235},{t:235,o:235},{t:235,o:235},{t:235,o:235},{t:235,o:235},{t:235,o:235},{t:235,o:235},{t:235,o:235},{t:235,o:235},{t:235,o:235},{t:235,o:235},{t:235,o:233},{t:235,o:233},{t:235,o:233},{t:235,o:229},{t:235,o:230},{t:235,o:230},{t:235,o:222},{t:235,o:213},{t:235,o:213},{t:235,o:213},{t:235,o:209},{t:235,o:200},{t:235,o:200},{t:235,o:199},{t:235,o:199},{t:235,o:199},{t:235,o:199},{t:235,o:199}],
-      "T2 ROW B1":          [{t:2295,o:1722},{t:2295,o:280},{t:2295,o:280},{t:2295,o:0},{t:2295,o:0},{t:2295,o:0},{t:2295,o:0},{t:2295,o:0},{t:2295,o:0},{t:2295,o:0},{t:2295,o:0},{t:2295,o:0},{t:2295,o:0},{t:2295,o:0},{t:2295,o:0},{t:2295,o:0},{t:2295,o:0},{t:2295,o:0},{t:2295,o:0},{t:2295,o:0},{t:2295,o:0},{t:2295,o:0},{t:2295,o:0},{t:2295,o:0},{t:2295,o:0},{t:2295,o:0},{t:2295,o:0},{t:2295,o:0},{t:2295,o:0},{t:2295,o:0}],
-      "T2 Anti Binatang":   [{t:280,o:280},{t:280,o:280},{t:280,o:280},{t:280,o:280},{t:280,o:280},{t:280,o:280},{t:280,o:280},{t:280,o:280},{t:280,o:280},{t:280,o:190},{t:280,o:180},{t:280,o:171},{t:280,o:171},{t:280,o:171},{t:280,o:171},{t:280,o:171},{t:280,o:171},{t:280,o:171},{t:280,o:152},{t:280,o:152},{t:280,o:152},{t:280,o:152},{t:280,o:152},{t:280,o:152},{t:280,o:152},{t:280,o:152},{t:280,o:152},{t:280,o:152},{t:280,o:152},{t:280,o:152}],
-      "T2 Tapak Tower":     [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0}],
-    },
-    P:{
-      "P1 AHI Proteksi":    [{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0}],
-      "P1 Design Proteksi": [{t:12,o:12},{t:12,o:12},{t:12,o:12},{t:12,o:12},{t:12,o:8},{t:12,o:8},{t:12,o:8},{t:12,o:8},{t:12,o:8},{t:12,o:8},{t:12,o:8},{t:12,o:8},{t:12,o:8},{t:12,o:8},{t:12,o:8},{t:12,o:8},{t:12,o:8},{t:12,o:8},{t:12,o:8},{t:12,o:8},{t:12,o:8},{t:12,o:8},{t:12,o:8},{t:12,o:8},{t:12,o:8},{t:12,o:8},{t:12,o:8},{t:12,o:8},{t:12,o:8},{t:12,o:8}],
-      "P2 AHI Catu Daya":   [{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1}],
-      "P2 Design Catu Daya":[{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6}],
-    },
-  },
-  SURABAYA:{
-    G:{
-      "G1 AHI Trafo":       [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
-      "G1 Anti Binatang":   [{t:37,o:37},{t:37,o:37},{t:37,o:37},{t:37,o:37},{t:37,o:37},{t:37,o:13},{t:37,o:13},{t:37,o:13},{t:37,o:13},{t:37,o:13},{t:37,o:13},{t:37,o:13},{t:37,o:13},{t:37,o:13},{t:37,o:13},{t:37,o:13},{t:37,o:13},{t:37,o:13},{t:37,o:13},{t:37,o:13},{t:37,o:13},{t:37,o:13},{t:37,o:12},{t:37,o:12},{t:37,o:12},{t:37,o:9},{t:37,o:0},{t:37,o:0},{t:37,o:0},{t:37,o:0}],
-      "G1 Relay Internal":  [{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1}],
-      "G2 MV Aparatus":     [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
-      "G3 Switchyard AHI":  [{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3}],
-      "G4 GIS":             [{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2}],
-      "G5 Common Facility": [{t:15,o:15},{t:15,o:15},{t:15,o:15},{t:15,o:12},{t:15,o:12},{t:15,o:5},{t:15,o:5},{t:15,o:5},{t:15,o:5},{t:15,o:5},{t:15,o:6},{t:15,o:6},{t:15,o:6},{t:15,o:6},{t:15,o:6},{t:15,o:6},{t:15,o:6},{t:15,o:6},{t:15,o:6},{t:15,o:6},{t:15,o:6},{t:15,o:6},{t:15,o:6},{t:15,o:6},{t:15,o:6},{t:15,o:6},{t:15,o:6},{t:15,o:6},{t:15,o:6},{t:15,o:6}],
-    },
-    T:{
-      "T1 Cable Sheath":    [{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6}],
-      "T2 SUTT AHI":        [{t:19,o:19},{t:19,o:19},{t:19,o:19},{t:19,o:19},{t:19,o:19},{t:19,o:19},{t:19,o:19},{t:19,o:19},{t:19,o:15},{t:19,o:15},{t:19,o:15},{t:19,o:15},{t:19,o:14},{t:19,o:14},{t:19,o:14},{t:19,o:12},{t:19,o:11},{t:19,o:11},{t:19,o:11},{t:19,o:11},{t:19,o:11},{t:19,o:11},{t:19,o:11},{t:19,o:9},{t:19,o:9},{t:19,o:9},{t:19,o:9},{t:19,o:9},{t:19,o:9},{t:19,o:9}],
-      "T2 ROW B1":          [{t:45,o:34},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0},{t:45,o:0}],
-      "T2 Anti Binatang":   [{t:66,o:66},{t:66,o:66},{t:66,o:66},{t:66,o:66},{t:66,o:66},{t:66,o:66},{t:66,o:66},{t:66,o:66},{t:66,o:66},{t:66,o:66},{t:66,o:66},{t:66,o:48},{t:66,o:41},{t:66,o:41},{t:66,o:41},{t:66,o:36},{t:66,o:28},{t:66,o:27},{t:66,o:27},{t:66,o:26},{t:66,o:26},{t:66,o:26},{t:66,o:26},{t:66,o:26},{t:66,o:26},{t:66,o:26},{t:66,o:21},{t:66,o:21},{t:66,o:21},{t:66,o:12}],
-      "T2 Tapak Tower":     [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
-    },
-    P:{
-      "P1 AHI Proteksi":    [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
-      "P1 Design Proteksi": [{t:18,o:18},{t:18,o:18},{t:18,o:18},{t:18,o:16},{t:18,o:16},{t:18,o:16},{t:18,o:16},{t:18,o:16},{t:18,o:16},{t:18,o:16},{t:18,o:16},{t:18,o:14},{t:18,o:14},{t:18,o:14},{t:18,o:14},{t:18,o:14},{t:18,o:14},{t:18,o:14},{t:18,o:14},{t:18,o:14},{t:18,o:14},{t:18,o:14},{t:18,o:12},{t:18,o:12},{t:18,o:12},{t:18,o:12},{t:18,o:12},{t:18,o:12},{t:18,o:12},{t:18,o:12}],
-      "P2 AHI Catu Daya":   [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
-      "P2 Design Catu Daya":[{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3}],
-    },
-  },
-  GRESIK:{
-    G:{
-      "G1 AHI Trafo":       [{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0}],
-      "G1 Anti Binatang":   [{t:32,o:32},{t:32,o:32},{t:32,o:32},{t:32,o:21},{t:32,o:2},{t:32,o:2},{t:32,o:2},{t:32,o:2},{t:32,o:2},{t:32,o:2},{t:32,o:2},{t:32,o:2},{t:32,o:2},{t:32,o:0},{t:32,o:0},{t:32,o:0},{t:32,o:0},{t:32,o:0},{t:32,o:0},{t:32,o:0},{t:32,o:0},{t:32,o:0},{t:32,o:0},{t:32,o:0},{t:32,o:0},{t:32,o:0},{t:32,o:0},{t:32,o:0},{t:32,o:0},{t:32,o:0}],
-      "G1 Relay Internal":  [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
-      "G2 MV Aparatus":     [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
-      "G3 Switchyard AHI":  [{t:48,o:45},{t:48,o:42},{t:48,o:40},{t:48,o:40},{t:48,o:40},{t:48,o:40},{t:48,o:40},{t:48,o:40},{t:48,o:40},{t:48,o:40},{t:48,o:40},{t:48,o:40},{t:48,o:40},{t:48,o:40},{t:48,o:40},{t:48,o:40},{t:48,o:40},{t:48,o:40},{t:48,o:40},{t:48,o:40},{t:48,o:40},{t:48,o:40},{t:48,o:40},{t:48,o:40},{t:48,o:40},{t:48,o:40},{t:48,o:38},{t:48,o:38},{t:48,o:38},{t:48,o:29}],
-      "G4 GIS":             [{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1}],
-      "G5 Common Facility": [{t:26,o:26},{t:26,o:26},{t:26,o:26},{t:26,o:24},{t:26,o:23},{t:26,o:15},{t:26,o:15},{t:26,o:15},{t:26,o:15},{t:26,o:15},{t:26,o:17},{t:26,o:17},{t:26,o:17},{t:26,o:17},{t:26,o:17},{t:26,o:17},{t:26,o:17},{t:26,o:17},{t:26,o:17},{t:26,o:17},{t:26,o:17},{t:26,o:17},{t:26,o:17},{t:26,o:17},{t:26,o:17},{t:26,o:17},{t:26,o:13},{t:26,o:13},{t:26,o:13},{t:26,o:13}],
-    },
-    T:{
-      "T1 Cable Sheath":    [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
-      "T2 SUTT AHI":        [{t:33,o:33},{t:33,o:33},{t:33,o:33},{t:33,o:33},{t:33,o:33},{t:33,o:29},{t:33,o:24},{t:33,o:24},{t:33,o:22},{t:33,o:22},{t:33,o:22},{t:33,o:22},{t:33,o:22},{t:33,o:22},{t:33,o:22},{t:33,o:22},{t:33,o:22},{t:33,o:22},{t:33,o:22},{t:33,o:21},{t:33,o:21},{t:33,o:21},{t:33,o:21},{t:33,o:21},{t:33,o:21},{t:33,o:21},{t:33,o:21},{t:33,o:21},{t:33,o:21},{t:33,o:21}],
-      "T2 ROW B1":          [{t:2169,o:2114},{t:2169,o:1895},{t:2169,o:1669},{t:2169,o:1250},{t:2169,o:1040},{t:2169,o:128},{t:2169,o:0},{t:2169,o:0},{t:2169,o:0},{t:2169,o:0},{t:2169,o:0},{t:2169,o:0},{t:2169,o:0},{t:2169,o:0},{t:2169,o:0},{t:2169,o:0},{t:2169,o:0},{t:2169,o:0},{t:2169,o:0},{t:2169,o:0},{t:2169,o:0},{t:2169,o:0},{t:2169,o:0},{t:2169,o:0},{t:2169,o:0},{t:2169,o:0},{t:2169,o:0},{t:2169,o:0},{t:2169,o:0},{t:2169,o:0}],
-      "T2 Anti Binatang":   [{t:157,o:157},{t:157,o:157},{t:157,o:157},{t:157,o:157},{t:157,o:150},{t:157,o:150},{t:157,o:150},{t:157,o:150},{t:157,o:150},{t:157,o:150},{t:157,o:150},{t:157,o:150},{t:157,o:150},{t:157,o:150},{t:157,o:150},{t:157,o:150},{t:157,o:150},{t:157,o:150},{t:157,o:150},{t:157,o:148},{t:157,o:148},{t:157,o:148},{t:157,o:140},{t:157,o:140},{t:157,o:140},{t:157,o:140},{t:157,o:140},{t:157,o:140},{t:157,o:140},{t:157,o:140}],
-      "T2 Tapak Tower":     [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
-    },
-    P:{
-      "P1 AHI Proteksi":    [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
-      "P1 Design Proteksi": [{t:28,o:28},{t:28,o:28},{t:28,o:28},{t:28,o:26},{t:28,o:26},{t:28,o:26},{t:28,o:26},{t:28,o:26},{t:28,o:25},{t:28,o:25},{t:28,o:25},{t:28,o:25},{t:28,o:25},{t:28,o:25},{t:28,o:25},{t:28,o:25},{t:28,o:25},{t:28,o:25},{t:28,o:25},{t:28,o:25},{t:28,o:25},{t:28,o:25},{t:28,o:25},{t:28,o:23},{t:28,o:23},{t:28,o:23},{t:28,o:23},{t:28,o:23},{t:28,o:23},{t:28,o:23}],
-      "P2 AHI Catu Daya":   [{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1}],
-      "P2 Design Catu Daya":[{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
-    },
-  },
-  BALI:{
-    G:{
-      "G1 AHI Trafo":       [{t:4,o:4},{t:4,o:3},{t:4,o:3},{t:4,o:3},{t:4,o:3},{t:4,o:3},{t:4,o:3},{t:4,o:3},{t:4,o:3},{t:4,o:3},{t:4,o:3},{t:4,o:2},{t:4,o:2},{t:4,o:2},{t:4,o:2},{t:4,o:2},{t:4,o:2},{t:4,o:2},{t:4,o:2},{t:4,o:2},{t:4,o:2},{t:4,o:2},{t:4,o:2},{t:4,o:2},{t:4,o:2},{t:4,o:2},{t:4,o:2},{t:4,o:2},{t:4,o:2},{t:4,o:2}],
-      "G1 Anti Binatang":   [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
-      "G1 Relay Internal":  [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
-      "G2 MV Aparatus":     [{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0}],
-      "G3 Switchyard AHI":  [{t:36,o:36},{t:36,o:35},{t:36,o:35},{t:36,o:35},{t:36,o:26},{t:36,o:19},{t:36,o:19},{t:36,o:19},{t:36,o:19},{t:36,o:19},{t:36,o:19},{t:36,o:19},{t:36,o:19},{t:36,o:19},{t:36,o:19},{t:36,o:19},{t:36,o:19},{t:36,o:19},{t:36,o:19},{t:36,o:19},{t:36,o:19},{t:36,o:19},{t:36,o:19},{t:36,o:19},{t:36,o:19},{t:36,o:19},{t:36,o:19},{t:36,o:15},{t:36,o:15},{t:36,o:15}],
-      "G4 GIS":             [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
-      "G5 Common Facility": [{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:9,o:9},{t:9,o:9},{t:9,o:9},{t:9,o:9},{t:9,o:9},{t:9,o:9},{t:9,o:9},{t:9,o:8},{t:9,o:7},{t:9,o:7},{t:9,o:7},{t:9,o:7},{t:9,o:7},{t:9,o:6},{t:9,o:6},{t:9,o:6},{t:9,o:6},{t:9,o:6},{t:9,o:6},{t:9,o:6}],
-    },
-    T:{
-      "T1 Cable Sheath":    [{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3},{t:3,o:3}],
-      "T2 SUTT AHI":        [{t:168,o:168},{t:168,o:168},{t:168,o:168},{t:168,o:168},{t:168,o:168},{t:168,o:168},{t:168,o:168},{t:168,o:168},{t:168,o:168},{t:168,o:168},{t:168,o:168},{t:168,o:168},{t:168,o:168},{t:168,o:168},{t:168,o:168},{t:168,o:168},{t:168,o:168},{t:168,o:168},{t:168,o:168},{t:168,o:168},{t:168,o:168},{t:168,o:168},{t:168,o:168},{t:168,o:168},{t:168,o:168},{t:168,o:167},{t:168,o:167},{t:168,o:167},{t:168,o:167},{t:168,o:167}],
-      "T2 ROW B1":          [{t:1747,o:1653},{t:1747,o:825},{t:1747,o:271},{t:1747,o:1},{t:1747,o:0},{t:1747,o:0},{t:1747,o:0},{t:1747,o:0},{t:1747,o:0},{t:1747,o:0},{t:1747,o:0},{t:1747,o:0},{t:1747,o:0},{t:1747,o:0},{t:1747,o:0},{t:1747,o:0},{t:1747,o:0},{t:1747,o:0},{t:1747,o:0},{t:1747,o:0},{t:1747,o:0},{t:1747,o:0},{t:1747,o:0},{t:1747,o:0},{t:1747,o:0},{t:1747,o:0},{t:1747,o:0},{t:1747,o:0},{t:1747,o:0},{t:1747,o:0}],
-      "T2 Anti Binatang":   [{t:7,o:7},{t:7,o:7},{t:7,o:7},{t:7,o:7},{t:7,o:7},{t:7,o:7},{t:7,o:7},{t:7,o:7},{t:7,o:7},{t:7,o:7},{t:7,o:7},{t:7,o:7},{t:7,o:7},{t:7,o:7},{t:7,o:7},{t:7,o:7},{t:7,o:7},{t:7,o:7},{t:7,o:7},{t:7,o:7},{t:7,o:7},{t:7,o:7},{t:7,o:7},{t:7,o:7},{t:7,o:7},{t:7,o:3},{t:7,o:0},{t:7,o:0},{t:7,o:0},{t:7,o:0}],
-      "T2 Tapak Tower":     [{t:231,o:231},{t:231,o:231},{t:231,o:231},{t:231,o:231},{t:231,o:123},{t:231,o:123},{t:231,o:123},{t:231,o:123},{t:231,o:123},{t:231,o:123},{t:231,o:123},{t:231,o:123},{t:231,o:123},{t:231,o:123},{t:231,o:123},{t:231,o:123},{t:231,o:123},{t:231,o:123},{t:231,o:123},{t:231,o:123},{t:231,o:123},{t:231,o:123},{t:231,o:123},{t:231,o:123},{t:231,o:123},{t:231,o:96},{t:231,o:87},{t:231,o:87},{t:231,o:87},{t:231,o:87}],
-    },
-    P:{
-      "P1 AHI Proteksi":    [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
-      "P1 Design Proteksi": [{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3},{t:8,o:3}],
-      "P2 AHI Catu Daya":   [{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1}],
-      "P2 Design Catu Daya":[{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1}],
-    },
-  },
-  MADIUN:{
-    G:{
-      "G1 AHI Trafo":       [{t:10,o:10},{t:10,o:9},{t:10,o:9},{t:10,o:9},{t:10,o:4},{t:10,o:4},{t:10,o:4},{t:10,o:4},{t:10,o:4},{t:10,o:4},{t:10,o:4},{t:10,o:4},{t:10,o:4},{t:10,o:4},{t:10,o:4},{t:10,o:4},{t:10,o:4},{t:10,o:4},{t:10,o:4},{t:10,o:4},{t:10,o:4},{t:10,o:4},{t:10,o:4},{t:10,o:4},{t:10,o:4},{t:10,o:4},{t:10,o:4},{t:10,o:4},{t:10,o:4},{t:10,o:4}],
-      "G1 Anti Binatang":   [{t:13,o:13},{t:13,o:13},{t:13,o:13},{t:13,o:13},{t:13,o:4},{t:13,o:4},{t:13,o:4},{t:13,o:4},{t:13,o:4},{t:13,o:4},{t:13,o:4},{t:13,o:4},{t:13,o:4},{t:13,o:4},{t:13,o:4},{t:13,o:4},{t:13,o:4},{t:13,o:4},{t:13,o:4},{t:13,o:4},{t:13,o:4},{t:13,o:4},{t:13,o:4},{t:13,o:4},{t:13,o:4},{t:13,o:4},{t:13,o:4},{t:13,o:4},{t:13,o:4},{t:13,o:4}],
-      "G1 Relay Internal":  [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
-      "G2 MV Aparatus":     [{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:6},{t:6,o:1},{t:6,o:1},{t:6,o:1},{t:6,o:1},{t:6,o:1},{t:6,o:1},{t:6,o:1},{t:6,o:1},{t:6,o:1},{t:6,o:1},{t:6,o:1},{t:6,o:1},{t:6,o:1},{t:6,o:0},{t:6,o:0},{t:6,o:0},{t:6,o:0},{t:6,o:0},{t:6,o:0},{t:6,o:0},{t:6,o:0},{t:6,o:0},{t:6,o:0},{t:6,o:0},{t:6,o:0}],
-      "G3 Switchyard AHI":  [{t:54,o:54},{t:54,o:54},{t:54,o:54},{t:54,o:54},{t:54,o:38},{t:54,o:27},{t:54,o:27},{t:54,o:27},{t:54,o:27},{t:54,o:27},{t:54,o:27},{t:54,o:27},{t:54,o:27},{t:54,o:27},{t:54,o:27},{t:54,o:27},{t:54,o:27},{t:54,o:24},{t:54,o:24},{t:54,o:24},{t:54,o:24},{t:54,o:24},{t:54,o:24},{t:54,o:24},{t:54,o:24},{t:54,o:24},{t:54,o:24},{t:54,o:24},{t:54,o:24},{t:54,o:24}],
-      "G4 GIS":             [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
-      "G5 Common Facility": [{t:15,o:15},{t:15,o:15},{t:15,o:15},{t:15,o:15},{t:15,o:15},{t:15,o:15},{t:15,o:15},{t:15,o:15},{t:15,o:15},{t:15,o:15},{t:18,o:17},{t:18,o:17},{t:18,o:17},{t:18,o:17},{t:18,o:17},{t:18,o:17},{t:18,o:17},{t:18,o:11},{t:18,o:10},{t:18,o:7},{t:18,o:7},{t:18,o:6},{t:18,o:6},{t:18,o:6},{t:18,o:6},{t:18,o:5},{t:18,o:5},{t:18,o:5},{t:18,o:5},{t:18,o:5}],
-    },
-    T:{
-      "T1 Cable Sheath":    [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
-      "T2 SUTT AHI":        [{t:75,o:75},{t:75,o:75},{t:75,o:75},{t:75,o:75},{t:75,o:61},{t:75,o:61},{t:75,o:61},{t:75,o:61},{t:75,o:62},{t:75,o:62},{t:75,o:62},{t:75,o:62},{t:75,o:62},{t:75,o:62},{t:75,o:62},{t:75,o:62},{t:75,o:62},{t:75,o:62},{t:75,o:62},{t:75,o:62},{t:75,o:62},{t:75,o:62},{t:75,o:62},{t:75,o:62},{t:75,o:62},{t:75,o:62},{t:75,o:62},{t:75,o:62},{t:75,o:62},{t:75,o:62}],
-      "T2 ROW B1":          [{t:2684,o:2191},{t:2684,o:1061},{t:2684,o:528},{t:2684,o:0},{t:2684,o:0},{t:2684,o:0},{t:2684,o:0},{t:2684,o:0},{t:2684,o:0},{t:2684,o:0},{t:2684,o:0},{t:2684,o:0},{t:2684,o:0},{t:2684,o:0},{t:2684,o:0},{t:2684,o:0},{t:2684,o:0},{t:2684,o:0},{t:2684,o:0},{t:2684,o:0},{t:2684,o:0},{t:2684,o:0},{t:2684,o:0},{t:2684,o:0},{t:2684,o:0},{t:2684,o:0},{t:2684,o:0},{t:2684,o:0},{t:2684,o:0},{t:2684,o:0}],
-      "T2 Anti Binatang":   [{t:194,o:194},{t:194,o:194},{t:194,o:194},{t:194,o:194},{t:194,o:194},{t:194,o:194},{t:194,o:194},{t:194,o:194},{t:194,o:194},{t:194,o:194},{t:194,o:194},{t:194,o:194},{t:194,o:194},{t:194,o:194},{t:194,o:194},{t:194,o:194},{t:194,o:194},{t:194,o:194},{t:194,o:194},{t:194,o:194},{t:194,o:194},{t:194,o:194},{t:194,o:194},{t:194,o:194},{t:194,o:194},{t:194,o:194},{t:194,o:194},{t:194,o:194},{t:194,o:194},{t:194,o:194}],
-      "T2 Tapak Tower":     [{t:11,o:11},{t:11,o:11},{t:11,o:11},{t:11,o:11},{t:11,o:10},{t:11,o:10},{t:11,o:10},{t:11,o:10},{t:11,o:10},{t:11,o:10},{t:11,o:10},{t:11,o:10},{t:11,o:10},{t:11,o:10},{t:11,o:10},{t:11,o:10},{t:11,o:10},{t:11,o:2},{t:11,o:2},{t:11,o:2},{t:11,o:2},{t:11,o:2},{t:11,o:2},{t:11,o:2},{t:11,o:2},{t:11,o:2},{t:11,o:2},{t:11,o:2},{t:11,o:2},{t:11,o:2}],
-    },
-    P:{
-      "P1 AHI Proteksi":    [{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1}],
-      "P1 Design Proteksi": [{t:25,o:23},{t:25,o:23},{t:25,o:23},{t:25,o:23},{t:25,o:19},{t:25,o:15},{t:25,o:15},{t:25,o:15},{t:25,o:15},{t:25,o:15},{t:25,o:15},{t:25,o:15},{t:25,o:15},{t:25,o:15},{t:25,o:15},{t:25,o:15},{t:25,o:15},{t:25,o:15},{t:25,o:15},{t:25,o:15},{t:25,o:15},{t:25,o:15},{t:25,o:15},{t:25,o:13},{t:25,o:13},{t:25,o:13},{t:25,o:13},{t:25,o:13},{t:25,o:13},{t:25,o:13}],
-      "P2 AHI Catu Daya":   [{t:3,o:2},{t:3,o:2},{t:3,o:2},{t:3,o:2},{t:3,o:2},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:1},{t:3,o:0},{t:3,o:0},{t:3,o:0},{t:3,o:0},{t:3,o:0}],
-      "P2 Design Catu Daya":[{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
-    },
-  },
-  PROBOLINGGO:{
-    G:{
-      "G1 AHI Trafo":       [{t:2,o:2},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:1},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2}],
-      "G1 Anti Binatang":   [{t:18,o:18},{t:18,o:18},{t:18,o:18},{t:18,o:18},{t:18,o:18},{t:18,o:18},{t:18,o:18},{t:18,o:18},{t:18,o:18},{t:18,o:12},{t:18,o:12},{t:18,o:12},{t:18,o:12},{t:18,o:12},{t:18,o:12},{t:18,o:12},{t:18,o:12},{t:18,o:12},{t:18,o:12},{t:18,o:12},{t:18,o:12},{t:18,o:12},{t:18,o:0},{t:18,o:0},{t:18,o:0},{t:18,o:0},{t:18,o:0},{t:18,o:0},{t:18,o:0},{t:18,o:0}],
-      "G1 Relay Internal":  [{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:1},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0}],
-      "G2 MV Aparatus":     [{t:12,o:12},{t:12,o:12},{t:12,o:12},{t:12,o:12},{t:12,o:12},{t:12,o:12},{t:12,o:12},{t:12,o:12},{t:12,o:12},{t:12,o:0},{t:12,o:0},{t:12,o:0},{t:12,o:0},{t:12,o:0},{t:12,o:0},{t:12,o:0},{t:12,o:0},{t:12,o:0},{t:12,o:0},{t:12,o:0},{t:12,o:0},{t:12,o:0},{t:12,o:0},{t:12,o:0},{t:12,o:0},{t:12,o:0},{t:12,o:0},{t:12,o:0},{t:12,o:0},{t:12,o:0}],
-      "G3 Switchyard AHI":  [{t:150,o:150},{t:150,o:148},{t:150,o:148},{t:150,o:148},{t:150,o:148},{t:150,o:148},{t:150,o:148},{t:150,o:148},{t:150,o:148},{t:150,o:129},{t:150,o:129},{t:150,o:129},{t:150,o:129},{t:150,o:129},{t:148,o:129},{t:148,o:129},{t:148,o:129},{t:148,o:129},{t:148,o:129},{t:148,o:129},{t:148,o:129},{t:148,o:129},{t:148,o:129},{t:148,o:127},{t:148,o:127},{t:148,o:127},{t:148,o:127},{t:148,o:127},{t:148,o:127},{t:148,o:127}],
-      "G4 GIS":             [{t:1,o:1},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0},{t:1,o:0}],
-      "G5 Common Facility": [{t:9,o:9},{t:9,o:9},{t:9,o:9},{t:9,o:9},{t:9,o:9},{t:9,o:9},{t:9,o:9},{t:9,o:9},{t:9,o:9},{t:9,o:9},{t:9,o:8},{t:9,o:8},{t:9,o:8},{t:9,o:8},{t:9,o:8},{t:9,o:8},{t:9,o:8},{t:9,o:8},{t:9,o:8},{t:9,o:8},{t:9,o:8},{t:9,o:8},{t:9,o:8},{t:9,o:8},{t:9,o:8},{t:9,o:8},{t:9,o:8},{t:9,o:8},{t:9,o:8},{t:9,o:8}],
-    },
-    T:{
-      "T1 Cable Sheath":    [{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0},{t:0,o:0}],
-      "T2 SUTT AHI":        [{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111},{t:111,o:111}],
-      "T2 ROW B1":          [{t:10758,o:9072},{t:10758,o:5665},{t:10758,o:3515},{t:10758,o:1505},{t:10758,o:1505},{t:10758,o:1505},{t:10758,o:1505},{t:10758,o:1505},{t:10758,o:1505},{t:10758,o:1505},{t:10758,o:1505},{t:10758,o:1505},{t:10758,o:1125},{t:10758,o:1125},{t:10758,o:1125},{t:10758,o:1125},{t:10758,o:1125},{t:10758,o:1125},{t:10758,o:1125},{t:10758,o:1125},{t:10758,o:1125},{t:10758,o:1125},{t:10758,o:1125},{t:10758,o:948},{t:10758,o:948},{t:10758,o:724},{t:10758,o:724},{t:10758,o:724},{t:10758,o:724},{t:10758,o:724}],
-      "T2 Anti Binatang":   [{t:641,o:641},{t:641,o:641},{t:641,o:641},{t:641,o:641},{t:641,o:641},{t:641,o:641},{t:641,o:641},{t:641,o:641},{t:641,o:641},{t:641,o:641},{t:641,o:641},{t:641,o:641},{t:641,o:641},{t:641,o:641},{t:641,o:641},{t:641,o:641},{t:641,o:641},{t:641,o:641},{t:641,o:641},{t:641,o:641},{t:641,o:641},{t:641,o:641},{t:641,o:641},{t:641,o:641},{t:641,o:641},{t:641,o:636},{t:641,o:636},{t:641,o:636},{t:641,o:636},{t:641,o:615}],
-      "T2 Tapak Tower":     [{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:8},{t:8,o:0},{t:8,o:0},{t:8,o:0},{t:8,o:0},{t:8,o:0},{t:8,o:0},{t:8,o:0},{t:8,o:0},{t:8,o:0},{t:8,o:0},{t:8,o:0},{t:8,o:0},{t:8,o:0},{t:8,o:0},{t:8,o:0},{t:8,o:0},{t:8,o:0},{t:8,o:0},{t:8,o:0},{t:8,o:0},{t:8,o:0},{t:8,o:0},{t:8,o:0},{t:8,o:0},{t:8,o:0}],
-    },
-    P:{
-      "P1 AHI Proteksi":    [{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:5},{t:5,o:4},{t:5,o:4},{t:5,o:4},{t:5,o:4},{t:5,o:4},{t:5,o:4},{t:5,o:4},{t:5,o:4}],
-      "P1 Design Proteksi": [{t:45,o:44},{t:45,o:44},{t:45,o:44},{t:45,o:44},{t:45,o:43},{t:45,o:43},{t:45,o:43},{t:45,o:43},{t:45,o:43},{t:45,o:43},{t:45,o:43},{t:45,o:43},{t:45,o:43},{t:45,o:43},{t:45,o:43},{t:45,o:43},{t:45,o:43},{t:45,o:43},{t:45,o:43},{t:45,o:43},{t:45,o:43},{t:45,o:43},{t:45,o:43},{t:45,o:43},{t:45,o:43},{t:45,o:43},{t:45,o:43},{t:45,o:43},{t:45,o:43},{t:45,o:43}],
-      "P2 AHI Catu Daya":   [{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2}],
-      "P2 Design Catu Daya":[{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2},{t:2,o:2}],
-    },
-  },
+const SUB_KEYS = [
+  'G1 AHI Trafo','G1 Anti Binatang','G1 Relay Internal',
+  'G2 MV Aparatus','G3 Switchyard AHI','G4 GIS','G5 Common Facility',
+  'T1 Cable Sheath','T2 SUTT AHI','T2 ROW B1','T2 Anti Binatang','T2 Tapak Tower',
+  'P1 AHI Proteksi','P1 Design Proteksi','P2 AHI Catu Daya','P2 Design Catu Daya'
+];
+// Setiap sub-key punya 3 kolom: T (target), O (open), J (tindak lanjut)
+// Total kolom per baris: 1 (tanggal) + 16×3 = 49
+
+const GROUP_OF = {
+  'G1 AHI Trafo':'G','G1 Anti Binatang':'G','G1 Relay Internal':'G',
+  'G2 MV Aparatus':'G','G3 Switchyard AHI':'G','G4 GIS':'G','G5 Common Facility':'G',
+  'T1 Cable Sheath':'T','T2 SUTT AHI':'T','T2 ROW B1':'T','T2 Anti Binatang':'T','T2 Tapak Tower':'T',
+  'P1 AHI Proteksi':'P','P1 Design Proteksi':'P','P2 AHI Catu Daya':'P','P2 Design Catu Daya':'P'
+};
+
+function csvUrl(gid){
+  return 'https://docs.google.com/spreadsheets/d/e/'+SHEET_CONFIG.PUB_KEY+
+    '/pub?gid='+gid+'&single=true&output=csv';
 }
 
+function parseCSV(text){
+  return text.trim().split('\n').map(line=>{
+    // Handle quoted fields
+    var result=[]; var cur=''; var inQ=false;
+    for(var i=0;i<line.length;i++){
+      if(line[i]==='"'){inQ=!inQ;}
+      else if(line[i]===',' && !inQ){result.push(cur.trim());cur='';}
+      else cur+=line[i];
+    }
+    result.push(cur.trim());
+    return result;
+  });
+}
+
+function buildDBlock(rows){
+  // rows[0] = header, rows[1..] = data rows
+  // Kolom: Tanggal | SK1_T | SK1_O | SK1_J | SK2_T | SK2_O | SK2_J | ...
+  if(rows.length < 2) return null;
+  var wl = [];
+  var data = {G:{},T:{},P:{}};
+  var tinjutHist = {}; // tinjut per tanggal: {date: {sk: val}}
+  
+  SUB_KEYS.forEach(function(sk){
+    var grp = GROUP_OF[sk];
+    data[grp][sk] = [];
+  });
+  
+  for(var ri=1; ri<rows.length; ri++){
+    var row = rows[ri];
+    if(!row[0] || row[0].trim()==='') continue;
+    var date = row[0].trim();
+    wl.push(date);
+    tinjutHist[date] = {};
+    
+    SUB_KEYS.forEach(function(sk, si){
+      var grp = GROUP_OF[sk];
+      var tIdx = 1 + si*3;
+      var oIdx = 1 + si*3 + 1;
+      var jIdx = 1 + si*3 + 2;
+      var t = parseInt(row[tIdx])||0;
+      var o = parseInt(row[oIdx])||0;
+      var j = parseInt(row[jIdx])||0;
+      data[grp][sk].push({t:t, o:o, j:j});
+      if(j>0) tinjutHist[date][sk] = j;
+    });
+  }
+  return {wl:wl, data:data, tinjutHist:tinjutHist};
+}
+
+async function fetchCSV(gid){
+  try{
+    var url = csvUrl(gid);
+    var resp = await fetch(url);
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    return await resp.text();
+  }catch(e){
+    console.error('Fetch error gid='+gid, e);
+    return null;
+  }
+}
+
+// ── Loading overlay ──────────────────────────────────────────────────────
+function showLoading(msg){
+  var el = document.getElementById('loading-overlay');
+  if(el) el.style.display='flex';
+  var mt = document.getElementById('loading-msg');
+  if(mt) mt.textContent = msg||'Memuat data...';
+}
+function hideLoading(){
+  var el = document.getElementById('loading-overlay');
+  if(el) el.style.display='none';
+}
+function showError(msg){
+  var el = document.getElementById('loading-overlay');
+  if(el){
+    el.style.background='rgba(30,8,8,0.95)';
+    el.style.display='flex';
+  }
+  var mt = document.getElementById('loading-msg');
+  if(mt) mt.innerHTML='<span style="color:#f85149">⚠ '+msg+'</span>';
+}
+
+async function initDashboard(){
+  showLoading('Menghubungkan ke Google Sheets...');
+  
+  try{
+    // Fetch CONFIG first
+    showLoading('Mengambil data konfigurasi...');
+    var configText = await fetchCSV(SHEET_CONFIG.GIDS.CONFIG);
+    var configRows = configText ? parseCSV(configText) : [];
+    var configMap = {};
+    configRows.slice(1).forEach(function(r){ if(r[0]) configMap[r[0]]=r[1]||''; });
+    
+    // Fetch all UPT sheets in parallel
+    showLoading('Mengambil data 6 UPT (parallel)...');
+    var uptKeys = ['MALANG','SURABAYA','GRESIK','BALI','MADIUN','PROBOLINGGO'];
+    var fetches = uptKeys.map(function(upt){
+      return fetchCSV(SHEET_CONFIG.GIDS[upt]).then(function(r){
+        showLoading('Memproses '+upt+'...');
+        return r;
+      });
+    });
+    var results = await Promise.all(fetches);
+    
+    // Parse all
+    var allOk = true;
+    var wlRef = null;
+    var parsedData = {};
+    
+    uptKeys.forEach(function(upt, ui){
+      var text = results[ui];
+      if(!text){ allOk=false; console.error('No data for '+upt); return; }
+      var rows = parseCSV(text);
+      var parsed = buildDBlock(rows);
+      if(!parsed){ allOk=false; return; }
+      if(!wlRef) wlRef = parsed.wl;
+      D[upt] = parsed.data;
+      parsedData[upt] = parsed;
+    });
+    
+    if(!allOk){
+      showError('Gagal mengambil sebagian data UPT. Pastikan semua tab sudah dipublish di Google Sheets.');
+      return;
+    }
+
+    // Fetch TINJUT detail (optional - skip if GID not set)
+    showLoading('Mengambil data tindak lanjut...');
+    if(SHEET_CONFIG.GIDS.TINJUT && SHEET_CONFIG.GIDS.TINJUT !== 'ISI_GID_TAB_TINJUT'){
+      var tinjutText = await fetchCSV(SHEET_CONFIG.GIDS.TINJUT);
+      if(tinjutText){
+        var tinjutRows = parseCSV(tinjutText).slice(1); // skip header
+        TINJUT_DETAIL = {};
+        tinjutRows.forEach(function(r){
+          if(!r[0]||!r[1]||!r[2]) return;
+          var tgl=r[0].trim(), upt=r[1].trim().toUpperCase(),
+              kat=r[2].trim(), jml=parseInt(r[3])||0, ket=r[4]||'';
+          if(!TINJUT_DETAIL[tgl]) TINJUT_DETAIL[tgl]={};
+          if(!TINJUT_DETAIL[tgl][upt]) TINJUT_DETAIL[tgl][upt]=[];
+          TINJUT_DETAIL[tgl][upt].push({kat:kat, jml:jml, ket:ket});
+        });
+        // Update TINJUT_TODAY from latest date
+        var lastDate = wlRef[wlRef.length-1];
+        if(TINJUT_DETAIL[lastDate]){
+          Object.keys(TINJUT_DETAIL[lastDate]).forEach(function(upt){
+            var total = TINJUT_DETAIL[lastDate][upt].reduce(function(s,x){return s+x.jml;},0);
+            TINJUT_TODAY[upt] = total;
+          });
+        }
+      }
+    }
+
+    // Update global variables
+    WL.length = 0;
+    wlRef.forEach(function(d){ WL.push(d); });
+    
+    LAST_UPDATE = configMap['LAST_UPDATE'] || wlRef[wlRef.length-1] || '-';
+    
+    // Update TINJUT_TODAY
+    uptKeys.forEach(function(upt){
+      var key = 'TINJUT_'+upt;
+      TINJUT_TODAY[upt] = parseInt(configMap[key])||0;
+    });
+    
+    window.APPS_SCRIPT_URL = localStorage.getItem('apps_script_url')||'https://script.google.com/macros/s/AKfycbzkrVWWidtmFwTQj3f7WyVUSvLyX0xocRUlZP19xoh8mO20ZXfPWpSWtGJcIUDw-thS7Q/exec';
+    // Fetch BA sheet (optional - tidak fatal jika gagal)
+    showLoading('Mengambil data Berita Acara...');
+    try{
+      if(SHEET_CONFIG.GIDS.BA && SHEET_CONFIG.GIDS.BA !== 'GANTI_GID_BA'){
+        var baText = await fetchCSV(SHEET_CONFIG.GIDS.BA);
+        if(baText){
+          var baRows = parseCSV(baText);
+          // baRows[0] = header (UPT, SK1, SK2, ...)
+          // baRows[1..] = data per UPT
+          var baHeader = baRows[0];
+          baRows.slice(1).forEach(function(row){
+            var upt = (row[0]||'').trim().toUpperCase();
+            if(!upt) return;
+            BA_DATA[upt] = {};
+            baHeader.slice(1).forEach(function(sk, si){
+              BA_DATA[upt][sk.trim()] = parseInt(row[si+1])||0;
+            });
+          });
+          console.log('BA data loaded:', Object.keys(BA_DATA));
+        }
+      }
+    }catch(baErr){
+      console.warn('BA fetch failed (non-fatal):', baErr);
+    }
+
+    hideLoading();
+    renderAll();
+    
+  }catch(e){
+    console.error(e);
+    showError('Error: '+e.message);
+  }
+}
+
+// ── Global data (populated by initDashboard) ────────────────────────────
+var WL = [];
+var LAST_UPDATE = 'Memuat...';
+const UPTS = ["MALANG","SURABAYA","GRESIK","BALI","MADIUN","PROBOLINGGO"];
 const ROW_KEYS = ["T2 ROW B1"];
 const ROW_DIVISOR = 100;
-const UPTS = ["MALANG","SURABAYA","GRESIK","BALI","MADIUN","PROBOLINGGO"];
-const UPT_COLORS = {MALANG:'#0066cc',SURABAYA:'#00884a',GRESIK:'#cc2200',BALI:'#cc7700',MADIUN:'#6633bb',PROBOLINGGO:'#dd4400'};
-const CAT_COLORS = ['#0066cc','#00884a','#cc2200','#cc7700','#6633bb','#dd4400','#0099aa','#aa3300'];
+const UPT_COLORS = {MALANG:'#58a6ff',SURABAYA:'#3fb950',GRESIK:'#f85149',BALI:'#d29922',MADIUN:'#a371f7',PROBOLINGGO:'#f0883e'};
+const CAT_COLORS = ['#58a6ff','#3fb950','#f85149','#d29922','#a371f7','#f0883e','#39d353','#ff7b72'];
 const GROUP_META = {
   G:{label:"G – Gardu Induk",badge_bg:"rgba(0,102,204,0.1)",badge_txt:"#0066cc",bar:"#58a6ff"},
   T:{label:"T – Transmisi",badge_bg:"rgba(204,34,0,0.1)",badge_txt:"#cc2200",bar:"#f85149"},
   P:{label:"P – Proteksi & Catu Daya",badge_bg:"rgba(0,136,74,0.1)",badge_txt:"#00884a",bar:"#3fb950"},
 };
+var TINJUT_TODAY = {"MALANG":0,"SURABAYA":0,"GRESIK":0,"BALI":0,"MADIUN":0,"PROBOLINGGO":0};
+var TINJUT_DETAIL = {}; // {tanggal: {UPT: [{kat, jml, ket}]}}
+var D = {
+  MALANG:{G:{},T:{},P:{}},SURABAYA:{G:{},T:{},P:{}},
+  GRESIK:{G:{},T:{},P:{}},BALI:{G:{},T:{},P:{}},
+  MADIUN:{G:{},T:{},P:{}},PROBOLINGGO:{G:{},T:{},P:{}}
+};
+
+// BA_DATA: {UPT: {sk: jumlah_ba}}
+var BA_DATA = {};
 
 let activeView = 'rekap';
-let activeUpt = 'GRESIK';
+let activeUpt = 'MALANG';
 let _rekapCharts = [];
 let _uptCharts = [];
+
+// Safe array accessor - always returns last available point
+function safeGet(arr, idx){
+  if(!arr || arr.length===0) return {t:0,o:0,j:0};
+  var i = Math.min(idx, arr.length-1);
+  var pt = arr[i] || arr[arr.length-1] || {t:0,o:0,j:0};
+  return {t:pt.t||0, o:pt.o||0, j:pt.j||0};
+}
+function safeT(arr,i){return safeGet(arr,i).t;}
+function safeO(arr,i){return safeGet(arr,i).o;}
+function safeJ(arr,i){return safeGet(arr,i).j||0;}
+
 
 const darkBg = {id:'darkBg',beforeDraw:(chart)=>{const ctx=chart.canvas.getContext('2d');ctx.save();ctx.fillStyle='#161b22';ctx.fillRect(0,0,chart.width,chart.height);ctx.restore()}};
 
@@ -624,7 +461,7 @@ function adjVal(name,v){return ROW_KEYS.includes(name)?v/ROW_DIVISOR:v}
 
 function groupAggAdj(upt,grp,wi){
   let t=0,o=0;
-  Object.entries(D[upt][grp]).forEach(([name,arr])=>{t+=adjVal(name,arr[wi].t);o+=adjVal(name,arr[wi].o);});
+  Object.entries(D[upt][grp]).forEach(([name,arr])=>{t+=adjVal(name,safeT(arr,wi));o+=adjVal(name,safeO(arr,wi));});
   return{t,o};
 }
 
@@ -633,9 +470,9 @@ function calcProgress(upt){
   let totT=0,totO=0,rawT=0,rawO=0,rawRow=0,rawRowO=0,prevRawO=0;
   ['G','T','P'].forEach(g=>{
     Object.entries(D[upt][g]).forEach(([name,arr])=>{
-      totT+=adjVal(name,arr[n].t); totO+=adjVal(name,arr[n].o);
-      rawT+=arr[n].t; rawO+=arr[n].o; prevRawO+=arr[p].o;
-      if(ROW_KEYS.includes(name)){rawRow+=arr[n].t;rawRowO+=arr[n].o;}
+      totT+=adjVal(name,safeT(arr,n)); totO+=adjVal(name,safeO(arr,n));
+      rawT+=safeT(arr,n); rawO+=safeO(arr,n); prevRawO+=safeO(arr,p);
+      if(ROW_KEYS.includes(name)){rawRow+=safeT(arr,n);rawRowO+=safeO(arr,n);}
     });
   });
   return{pct:totT>0?Math.round((1-totO/totT)*100):100,adjT:Math.round(totT),adjO:Math.round(totO),rawT,rawO,rawRow,rawRowO,prevRawO,nonRowT:rawT-rawRow,nonRowO:rawO-rawRowO};
@@ -670,7 +507,7 @@ function makeLineChart(canvas, labels, tData, oData, col, jData=null){
 // ── NAV ──────────────────────────────────────────────────────────────────
 function renderNavTabs(){
   document.getElementById('nav-tabs').innerHTML=
-    [{key:'rekap',label:'Rekap UIT JBM'},{key:'upt',label:'Per UPT'},{key:'performance',label:'Performance'}]
+    [{key:'rekap',label:'Rekap UIT JBM'},{key:'upt',label:'Per UPT'},{key:'performance',label:'Performance'},{key:'input',label:'✏ Input Data'}]
     .map(t=>`<button class="nav-tab${t.key===activeView?' on':''}" onclick="setView('${t.key}')">${t.label}</button>`).join('');
 }
 function setView(v){
@@ -678,6 +515,7 @@ function setView(v){
   document.getElementById('view-rekap').style.display=v==='rekap'?'':'none';
   document.getElementById('view-upt').style.display=v==='upt'?'':'none';
   document.getElementById('view-performance').style.display=v==='performance'?'':'none';
+  document.getElementById('view-input').style.display=v==='input'?'':'none';
   renderAll();
 }
 function setUpt(u){activeUpt=u;renderUptView();}
@@ -721,7 +559,7 @@ function renderRekap(){
     const allSubs=new Set();UPTS.forEach(u=>Object.keys(D[u][gKey]).forEach(k=>allSubs.add(k)));
     const rows=[...allSubs].map(name=>{
       let totT=0,totO=0,has=false;
-      UPTS.forEach(u=>{const a=D[u][gKey][name];if(a){totT+=a[n].t;totO+=a[n].o;if(a[n].t>0||a[n].o>0)has=true;}});
+      UPTS.forEach(u=>{const a=D[u][gKey][name];if(a){totT+=safeT(a,n);totO+=safeO(a,n);if(safeT(a,n)>0||safeO(a,n)>0)has=true;}});
       if(!has)return'';
       const p=pct(totO,totT),oc=oColor(totO,totT);
       return `<div class="cat-row"><div class="cat-top"><span class="cat-name">${name}</span><span class="cat-nums" style="color:${oc}">${totO.toLocaleString()}/${totT.toLocaleString()}</span><span class="cat-pct" style="color:${oc}">${p}%</span></div><div class="cat-bar-bg"><div class="cat-bar-f" style="width:${p}%;background:${gm.bar}"></div></div></div>`;
@@ -737,17 +575,17 @@ function renderRekap(){
     ['G','T','P'].forEach(gKey=>{
       const gm=GROUP_META[gKey];
       const allSubs=new Set();UPTS.forEach(u=>Object.keys(D[u][gKey]).forEach(k=>allSubs.add(k)));
-      const active=[...allSubs].filter(name=>UPTS.some(u=>{const a=D[u][gKey][name];return a&&(a[n].t>0||a[n].o>0);}));
+      const active=[...allSubs].filter(name=>UPTS.some(u=>{const a=D[u][gKey][name];return a&&(safeT(a,n)>0||safeO(a,n)>0);}));
       if(!active.length)return;
       const cid='rekap_chart_'+gKey;
       const barH=Math.max(active.length*50+80,160);
       const datasets=UPTS.map(upt=>({
         label:upt,
-        data:active.map(name=>{const a=D[upt][gKey][name];return a?a[n].o:0;}),
-        targets:active.map(name=>{const a=D[upt][gKey][name];return a?a[n].t:0;}),
+        data:active.map(name=>{const a=D[upt][gKey][name];return a?safeO(a,n):0;}),
+        targets:active.map(name=>{const a=D[upt][gKey][name];return a?safeT(a,n):0;}),
         color:UPT_COLORS[upt]
       }));
-      const totalPcts=active.map(name=>{let tT=0,tO=0;UPTS.forEach(u=>{const a=D[u][gKey][name];if(a){tT+=a[n].t;tO+=a[n].o;}});return pct(tO,tT);});
+      const totalPcts=active.map(name=>{let tT=0,tO=0;UPTS.forEach(u=>{const a=D[u][gKey][name];if(a){tT+=safeT(a,n);tO+=safeO(a,n);}});return pct(tO,tT);});
       chartDefs.push({cid,active,datasets,totalPcts,barH,gKey});
       const lg=UPTS.map(u=>`<span class="chart-legend-item"><span class="legend-sq" style="background:${UPT_COLORS[u]}"></span>${u}</span>`).join('');
       const mini=active.map((name,i)=>{const p=totalPcts[i];const oc=p===100?'#3fb950':p===0?'#f85149':'#d29922';return`<div><div class="mini-prog-name">${name}</div><div style="display:flex;align-items:center;gap:5px"><div style="flex:1;height:3px;background:var(--bg3);border-radius:2px;overflow:hidden"><div style="height:100%;width:${p}%;background:${oc};border-radius:2px"></div></div><span style="font-family:var(--font-m);font-size:9px;color:${oc};min-width:28px;text-align:right">${p}%</span></div></div>`;}).join('');
@@ -823,7 +661,7 @@ function renderRekap(){
             let total = 0;
             UPTS.forEach(upt => {
               const arr = D[upt][grp][name] || [];
-              const v = wi < arr.length ? arr[wi].o : (arr.length ? arr[arr.length-1].o : 0);
+              const v = wi < arr.length ? safeO(arr,wi) : (arr.length ? arr[arr.length-1].o : 0);
               total += isROW ? v/ROW_DIVISOR : v;
             });
             return isROW ? Math.round(total) : total;
@@ -832,7 +670,7 @@ function renderRekap(){
             let total = 0;
             UPTS.forEach(upt => {
               const arr = D[upt][grp][name] || [];
-              const v = wi < arr.length ? arr[wi].t : (arr.length ? arr[arr.length-1].t : 0);
+              const v = wi < arr.length ? safeT(arr,wi) : (arr.length ? arr[arr.length-1].t : 0);
               total += isROW ? v/ROW_DIVISOR : v;
             });
             return isROW ? Math.round(total) : total;
@@ -925,7 +763,7 @@ function renderUptPanels(){
   document.getElementById('panels').innerHTML=['G','T','P'].map(gKey=>{
     const gm=GROUP_META[gKey];
     const rows=Object.entries(D[activeUpt][gKey]).map(([name,arr])=>{
-      const t=arr[n].t,o=arr[n].o;if(!t&&!o)return'';
+      const t=safeT(arr,n),o=safeO(arr,n);if(!t&&!o)return'';
       const p=pct(o,t),oc=oColor(o,t);
       const d=arr[Math.max(0,n-1)].o-o;
       const ds=d>0?`<span class="delta-tag" style="color:#3fb950">▼${d}</span>`:d<0?`<span class="delta-tag" style="color:#f85149">▲${Math.abs(d)}</span>`:'';
@@ -952,10 +790,10 @@ function renderUptCharts(){
       const col=CAT_COLORS[i%CAT_COLORS.length];
       const isROW=ROW_KEYS.includes(name);
       const cid=`upt_${grp}_${i}`;
-      const lastO=arr[n].o,lastT=arr[n].t;
+      const lastO=safeO(arr,n),lastT=safeT(arr,n);
       const p=pct(lastO,lastT),pc=p===100?'#3fb950':p===0?'#f85149':'#d29922';
-      const tData=WL.map((_,wi)=>{const v=arr[wi]?arr[wi].t:arr[n].t;return isROW?Math.round(v/ROW_DIVISOR):v;});
-      const oData=WL.map((_,wi)=>{const v=arr[wi]?arr[wi].o:arr[n].o;return isROW?Math.round(v/ROW_DIVISOR):v;});
+      const tData=WL.map((_,wi)=>{const v=arr[wi]?safeT(arr,wi):safeT(arr,n);return isROW?Math.round(v/ROW_DIVISOR):v;});
+      const oData=WL.map((_,wi)=>{const v=arr[wi]?safeO(arr,wi):safeO(arr,n);return isROW?Math.round(v/ROW_DIVISOR):v;});
       chartQueue.push({cid,name,tData,oData,col});
       const tj = TINJUT_TODAY[activeUpt] || 0;
       const tjBadge = (tj > 0 && isROW) ? `<span style="color:#ffa502;font-family:var(--font-m);font-size:9px;font-weight:600">▶ TL: ${tj.toLocaleString()}</span>` : '';
@@ -967,15 +805,22 @@ function renderUptCharts(){
         <div class="cat-chart-wrap"><canvas id="${cid}" style="display:block;width:100%;height:100%"></canvas></div>
         <div class="cat-chart-foot">
           <span>open: <span style="color:${col}">${isROW?lastO.toLocaleString()+' pohon':lastO.toLocaleString()}</span></span>
-          <span style="display:flex;align-items:center;gap:6px">${tjBadge}<span style="${tjBadge?'font-size:9px;color:var(--text3)':''}">target: ${arr[0].t.toLocaleString()}${isROW?' pohon':''}</span></span>
+          <span style="display:flex;align-items:center;gap:6px">${tjBadge}<span style="${tjBadge?'font-size:9px;color:var(--text3)':''}">target: ${safeT(arr,0).toLocaleString()}${isROW?' pohon':''}</span></span>
         </div>
       </div>`;
     });
 
     const tjTotal = TINJUT_TODAY[activeUpt] || 0;
-    const tjSectionBadge = (tjTotal > 0 && grp === 'T') 
-      ? `<span style="margin-left:auto;font-family:var(--font-m);font-size:10px;font-weight:600;color:#ffa502;background:rgba(255,165,2,0.1);border:1px solid rgba(255,165,2,0.3);padding:2px 8px;border-radius:4px">▶ Tindak Lanjut Hari Ini: ${tjTotal.toLocaleString()}</span>`
+    const lastDate = WL[WL.length-1]||'';
+    const tjDetail = (TINJUT_DETAIL[lastDate]||{})[activeUpt]||[];
+    const tjDetailHtml = tjDetail.length>0
+      ? tjDetail.map(function(x){
+          return '<span style="font-family:var(--font-m);font-size:9px;color:#ffa502;margin-left:8px">'+x.kat+': <b>'+x.jml+'</b>'+(x.ket?' ('+x.ket+')':'')+'</span>';
+        }).join('')
       : '';
+    const tjSectionBadge = (tjTotal > 0 && grp === 'T') 
+      ? '<span style="margin-left:auto;font-family:var(--font-m);font-size:10px;font-weight:600;color:#ffa502;background:rgba(255,165,2,0.1);border:1px solid rgba(255,165,2,0.3);padding:2px 8px;border-radius:4px">▶ Tindak Lanjut: '+tjTotal.toLocaleString()+tjDetailHtml+'</span>'
+      : (tjTotal > 0 ? '<span style="margin-left:auto;font-family:var(--font-m);font-size:10px;color:#ffa502">▶ Tindak Lanjut: '+tjTotal.toLocaleString()+tjDetailHtml+'</span>' : '');
     sectionsHtml+=`<div class="charts-section">
       <div class="charts-section-head">
         <span class="charts-grp-badge" style="background:${gm.badge_bg};color:${gm.badge_txt}">${grp}</span>
@@ -1025,7 +870,7 @@ function renderPerformance(){
         Object.entries(D[upt][g]).forEach(function(entry){
           var name = entry[0], arr = entry[1];
           if(wi < arr.length){
-            var o = arr[wi].o;
+            var o = safeO(arr,wi);
             total += (normalize && ROW_KEYS.includes(name)) ? o/ROW_DIVISOR : o;
           }
         });
@@ -1091,9 +936,20 @@ function renderPerformance(){
   }
 
   function buildPrediction(normData){
-    var lastDateMs = new Date('2026-04-13').getTime();
-    var endOfYear  = new Date('2026-12-31').getTime();
-    var msPerWeek  = 7*24*3600*1000;
+    // Gunakan tanggal terakhir dari WL secara dinamis
+    var monthMap = {Jan:0,Feb:1,Mar:2,Apr:3,Mei:4,Jun:5,Jul:6,Agt:7,Sep:8,Okt:9,Nov:10,Des:11,
+                    May:4,Aug:7,Oct:9,Dec:11};
+    var lastWL = WL[WL.length-1]||'28 Apr';
+    var lastParts = lastWL.split(' ');
+    var lastDay = parseInt(lastParts[0])||1;
+    var lastMon = monthMap[lastParts[1]]||0;
+    var lastYear = lastParts[2] ? parseInt(lastParts[2]) : new Date().getFullYear();
+    var lastDateMs = new Date(lastYear, lastMon, lastDay).getTime();
+    var today = new Date(); today.setHours(0,0,0,0);
+    var endOfYear  = new Date(today.getFullYear(), 11, 31).getTime();
+    var msPerDay   = 24*3600*1000;
+    var msPerWeek  = 7*msPerDay;
+    var daysLeft   = Math.max(0, Math.round((endOfYear - today.getTime()) / msPerDay));
     var weeksLeft  = (endOfYear - lastDateMs) / msPerWeek;
 
     var enriched = normData.map(function(r){
@@ -1110,12 +966,12 @@ function renderPerformance(){
     }).sort(function(a,b){ return a.will===b.will ? a.fms-b.fms : (b.will?1:-1); });
 
     var canFinish = enriched.filter(function(r){return r.will;}).length;
-    var wlr = Math.round(weeksLeft);
+    var wlr = daysLeft;
     var needSpeed = enriched.filter(function(r){return r.speedMin;})
       .map(function(r){return r.upt.slice(0,3)+' '+r.speedMin;}).join(', ') || '—';
 
     var sc = '<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:20px">'
-      + '<div class="stat-card"><div class="slb">Sisa Waktu</div><div class="sv" style="color:var(--accent)">'+wlr+'</div><div class="ssub">minggu hingga 31 Des 2026</div></div>'
+      + '<div class="stat-card"><div class="slb">Sisa Waktu</div><div class="sv" style="color:var(--accent)">'+wlr+'</div><div class="ssub">hari hingga 31 Des '+new Date().getFullYear()+'</div></div>'
       + '<div class="stat-card"><div class="slb">Prediksi Selesai</div><div class="sv" style="color:#00e5a0">'+canFinish+'</div><div class="ssub">UPT selesai sebelum akhir 2026</div></div>'
       + '<div class="stat-card"><div class="slb">Perlu Akselerasi</div><div class="sv" style="color:#ff4757">'+(6-canFinish)+'</div><div class="ssub">UPT belum bisa selesai</div></div>'
       + '<div class="stat-card"><div class="slb">Kec. Min. Dibutuhkan</div><div class="sv" style="color:#ffa502;font-size:14px;padding-top:6px;font-family:var(--font-m)">'+needSpeed+'</div><div class="ssub">anomali/minggu agar selesai 2026</div></div>'
@@ -1153,7 +1009,7 @@ function renderPerformance(){
       + thead + '<tbody>'+rows+'</tbody></table></div>'
       + '<div class="note-box" style="margin-top:12px;font-size:10px">'
       + '<strong>Asumsi:</strong> Kecepatan konstan = rata-rata mingguan sejak 08 Feb 2026 (normalisasi ROW B1 ÷ 100). '
-      + 'Sisa waktu: <strong>'+wlr+' minggu</strong> (13 Apr → 31 Des 2026). '
+      + 'Sisa waktu: <strong>'+wlr+' hari</strong> ('+lastWL+' → 31 Des '+new Date().getFullYear()+'). '
       + '"Butuh X/mggu" = kecepatan minimum agar selesai tepat akhir 2026.</div>';
   }
 
@@ -1192,18 +1048,562 @@ function renderPerformance(){
     + '<div class="sec-head" style="margin-top:28px"><span class="sec-title">Prediksi Penyelesaian Akhir Tahun</span><span class="sec-rule"></span><span class="sec-meta">asumsi kecepatan konstan · normalisasi ROW B1 ÷ 100</span></div>'
     + buildPrediction(normData);
 
-  document.getElementById('view-performance').innerHTML = html;
+  // Append TINJUT history section
+  var lastDate = WL[WL.length-1]||'';
+  var tinjutHtml = buildTinjutHistory();
+  document.getElementById('view-performance').innerHTML = html + tinjutHtml;
+}
+
+function buildTinjutHistory(){
+  if(!TINJUT_DETAIL || Object.keys(TINJUT_DETAIL).length===0){
+    return '<div class="sec-head" style="margin-top:28px"><span class="sec-title">Riwayat Tindak Lanjut</span><span class="sec-rule"></span><span class="sec-meta">data dari tab TINJUT</span></div>'
+      +'<div class="note-box">Tab TINJUT belum dikonfigurasi atau belum ada data.</div>';
+  }
+  // Sort dates descending
+  var dates = Object.keys(TINJUT_DETAIL).sort(function(a,b){
+    var ai=WL.indexOf(a), bi=WL.indexOf(b);
+    return bi-ai;
+  });
+  var rows = '';
+  dates.forEach(function(tgl){
+    var uptMap = TINJUT_DETAIL[tgl];
+    Object.keys(uptMap).forEach(function(upt){
+      var col = UPT_COLORS[upt]||'#58a6ff';
+      uptMap[upt].forEach(function(x){
+        rows += '<tr style="border-bottom:1px solid rgba(0,212,255,0.06)">'
+          +'<td style="padding:8px 12px;font-family:var(--font-m);font-size:11px;color:var(--text3)">'+tgl+'</td>'
+          +'<td style="padding:8px 12px;font-family:var(--font-m);font-size:11px;font-weight:700;color:'+col+'">'+upt+'</td>'
+          +'<td style="padding:8px 12px;font-family:var(--font-m);font-size:11px;color:var(--text2)">'+x.kat+'</td>'
+          +'<td style="padding:8px 12px;font-family:var(--font-m);font-size:12px;font-weight:600;color:#ffa502;text-align:right">'+x.jml.toLocaleString()+'</td>'
+          +'<td style="padding:8px 12px;font-family:var(--font-m);font-size:10px;color:var(--text3)">'+x.ket+'</td>'
+          +'</tr>';
+      });
+    });
+  });
+  var thead = '<thead><tr style="border-bottom:1px solid rgba(0,212,255,0.15)">'
+    +'<th style="padding:8px 12px;text-align:left;font-family:var(--font-m);font-size:10px;color:var(--text3);font-weight:500;letter-spacing:0.08em">TANGGAL</th>'
+    +'<th style="padding:8px 12px;text-align:left;font-family:var(--font-m);font-size:10px;color:var(--text3);font-weight:500;letter-spacing:0.08em">UPT</th>'
+    +'<th style="padding:8px 12px;text-align:left;font-family:var(--font-m);font-size:10px;color:var(--text3);font-weight:500;letter-spacing:0.08em">KATEGORI</th>'
+    +'<th style="padding:8px 12px;text-align:right;font-family:var(--font-m);font-size:10px;color:var(--text3);font-weight:500;letter-spacing:0.08em">JUMLAH</th>'
+    +'<th style="padding:8px 12px;text-align:left;font-family:var(--font-m);font-size:10px;color:var(--text3);font-weight:500;letter-spacing:0.08em">KETERANGAN</th>'
+    +'</tr></thead>';
+  return '<div class="sec-head" style="margin-top:28px"><span class="sec-title">Riwayat Tindak Lanjut</span><span class="sec-rule"></span><span class="sec-meta">'+Object.values(TINJUT_DETAIL).reduce(function(s,v){return s+Object.values(v).reduce(function(s2,a){return s2+a.length;},0);},0)+' entri</span></div>'
+    +'<div class="chart-card" style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
+    +thead+'<tbody>'+rows+'</tbody></table></div>';
+}
+
+function renderInputForm(){
+  if(!WL || WL.length===0){
+    document.getElementById('view-input').innerHTML='<div style="padding:40px;text-align:center;color:var(--text3);font-family:var(--font-m)">⏳ Menunggu data dari Google Sheets...</div>';
+    return;
+  }
+  var n = WL.length-1;
+  var today = new Date();
+  var months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+  var todayStr = String(today.getDate()).padStart(2,'0')+' '+months[today.getMonth()]+' '+today.getFullYear();
+  var activeInputUpt = window._activeInputUpt || UPTS[0];
+
+  // SUB_KEYS grouped
+  var GROUPS = [
+    {grp:'G', label:'Gardu Induk', color:'#58a6ff', subs:[
+      'G1 AHI Trafo','G1 Anti Binatang','G1 Relay Internal',
+      'G2 MV Aparatus','G3 Switchyard AHI','G4 GIS','G5 Common Facility'
+    ]},
+    {grp:'T', label:'Transmisi', color:'#f85149', subs:[
+      'T1 Cable Sheath','T2 SUTT AHI','T2 ROW B1','T2 Anti Binatang','T2 Tapak Tower'
+    ]},
+    {grp:'P', label:'Proteksi & Catu Daya', color:'#3fb950', subs:[
+      'P1 AHI Proteksi','P1 Design Proteksi','P2 AHI Catu Daya','P2 Design Catu Daya'
+    ]}
+  ];
+
+  // Build form rows per group
+  function buildRows(upt){
+    return GROUPS.map(function(g){
+      var rows = g.subs.map(function(sk){
+        var grpKey = GROUP_OF[sk];
+        var arr = (D[upt]&&D[upt][grpKey]) ? D[upt][grpKey][sk] : null;
+        var prevO = safeO(arr, arr ? arr.length-1 : 0);
+        var prevT = safeT(arr, arr ? arr.length-1 : 0);
+        var isROW = sk==='T2 ROW B1';
+        return '<tr>'
+          +'<td style="padding:7px 10px;font-family:var(--font-m);font-size:11px;color:var(--text2);white-space:nowrap">'+sk+(isROW?' <span style="opacity:0.5;font-size:9px">÷100</span>':'')+'</td>'
+          +'<td style="padding:7px 6px;text-align:center"><span style="font-family:var(--font-m);font-size:11px;color:var(--text3)">'+prevT+'</span></td>'
+          +'<td style="padding:7px 6px;text-align:center">'
+            +'<span style="font-family:var(--font-m);font-size:12px;font-weight:600;color:#a371f7">'
+            +(BA_DATA[upt]&&BA_DATA[upt][sk]!==undefined ? BA_DATA[upt][sk] : '—')
+            +'</span>'
+          +'</td>'
+          +'<td style="padding:7px 6px">'
+            +'<input type="number" id="inp_o_'+upt+'_'+sk.replace(/\s/g,'_')+'" '
+            +'value="'+prevO+'" min="0" '
+            +'style="width:70px;background:rgba(255,255,255,0.05);border:1px solid var(--line);border-radius:5px;'
+            +'color:var(--text);font-family:var(--font-m);font-size:12px;padding:4px 8px;text-align:center;outline:none" '
+            +'onchange="markChanged(this)" '
+            +'onfocus="this.style.borderColor=\'var(--accent)\'" '
+            +'onblur="this.style.borderColor=\'var(--line)\'">'
+          +'</td>'
+          +'<td style="padding:7px 6px;text-align:center">'
+            +(function(){
+              var arr2=(D[upt]&&D[upt][GROUP_OF[sk]])?D[upt][GROUP_OF[sk]][sk]:null;
+              if(!arr2||arr2.length===0) return '<span style="font-family:var(--font-m);font-size:11px;color:var(--text3)">N/A</span>';
+              var lastEntry=arr2[arr2.length-1];
+              var jVal=lastEntry?lastEntry.j:undefined;
+              if(jVal===undefined||jVal===null) return '<span style="font-family:var(--font-m);font-size:11px;color:var(--text3)">N/A</span>';
+              return '<span style="font-family:var(--font-m);font-size:12px;font-weight:600;color:#39d353">'+jVal+'</span>';
+            })()
+          +'</td>'
+          +'<td style="padding:7px 6px">'
+            +'<input type="number" id="inp_j_'+upt+'_'+sk.replace(/\s/g,'_')+'" '
+            +'value="0" min="0" '
+            +'style="width:70px;background:rgba(255,165,2,0.05);border:1px solid rgba(255,165,2,0.2);border-radius:5px;'
+            +'color:#ffa502;font-family:var(--font-m);font-size:12px;padding:4px 8px;text-align:center;outline:none" '
+            +'onfocus="this.style.borderColor=\'#ffa502\'" '
+            +'onblur="this.style.borderColor=\'rgba(255,165,2,0.2)\'">'
+          +'</td>'
+        +'</tr>';
+      }).join('');
+
+      return '<div style="margin-bottom:16px">'
+        +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
+        +'<span style="background:rgba('+hexToRgb(g.color)+',0.12);color:'+g.color+';font-family:var(--font-m);font-size:10px;font-weight:700;padding:3px 10px;border-radius:4px">'+g.grp+'</span>'
+        +'<span style="font-size:11px;color:var(--text2)">'+g.label+'</span>'
+        +'</div>'
+        +'<table style="width:100%;border-collapse:collapse;background:var(--bg2);border-radius:8px;overflow:hidden">'
+        +'<thead><tr style="border-bottom:1px solid var(--line)">'
+        +'<th style="padding:7px 10px;text-align:left;font-family:var(--font-m);font-size:9px;color:var(--text3);letter-spacing:0.08em;font-weight:500">SUB-KATEGORI</th>'
+        +'<th style="padding:7px 6px;text-align:center;font-family:var(--font-m);font-size:9px;color:var(--text3);letter-spacing:0.08em;font-weight:500">TARGET</th>'
+        +'<th style="padding:7px 6px;text-align:center;font-family:var(--font-m);font-size:9px;color:#a371f7;letter-spacing:0.08em;font-weight:500">CLOSE (BA)</th>'
+        +'<th style="padding:7px 6px;text-align:center;font-family:var(--font-m);font-size:9px;color:var(--text3);letter-spacing:0.08em;font-weight:500">OPEN</th>'
+        +'<th style="padding:7px 6px;text-align:center;font-family:var(--font-m);font-size:9px;color:#39d353;letter-spacing:0.08em;font-weight:500">DATA TINJUT HARI INI</th>'
+        +'<th style="padding:7px 6px;text-align:center;font-family:var(--font-m);font-size:9px;color:#ffa502;letter-spacing:0.08em;font-weight:500">INPUT TINJUT HARI INI</th>'
+        +'</tr></thead>'
+        +'<tbody>'+rows+'</tbody>'
+        +'</table>'
+      +'</div>';
+    }).join('');
+  }
+
+  // UPT tabs
+  var uptTabs = UPTS.map(function(u){
+    var col = UPT_COLORS[u];
+    return '<button onclick="switchInputUpt(\''+u+'\')" '
+      +'style="padding:7px 16px;font-family:var(--font-m);font-size:11px;font-weight:700;border:none;cursor:pointer;border-radius:6px;transition:all 0.15s;'
+      +(u===activeInputUpt
+        ? 'background:'+col+';color:#000;box-shadow:0 0 12px '+col+'44;'
+        : 'background:rgba(255,255,255,0.05);color:var(--text3);')
+      +'">'+u+'</button>';
+  }).join('');
+
+  // Google Sheets Apps Script URL info
+  var appsScriptSection = '<div style="display:flex;gap:8px;margin-bottom:16px;align-items:center">'
+    +'<span style="font-family:var(--font-m);font-size:10px;color:var(--text3);white-space:nowrap">⚙ Apps Script URL:</span>'
+    +'<input id="apps-script-url" type="text" placeholder="https://script.google.com/macros/s/..." '
+    +'value="'+(window.APPS_SCRIPT_URL||'')+'" '
+    +'style="flex:1;background:rgba(255,255,255,0.05);border:1px solid var(--line);border-radius:6px;'
+    +'color:var(--text);font-family:var(--font-m);font-size:10px;padding:5px 8px;outline:none">'
+    +'<button onclick="saveAppsScriptUrl()" '
+    +'style="padding:5px 12px;background:rgba(88,166,255,0.12);border:1px solid rgba(88,166,255,0.25);'
+    +'border-radius:6px;color:#58a6ff;font-family:var(--font-m);font-size:10px;cursor:pointer;white-space:nowrap">Simpan</button>'
+    +'</div>';
+
+  var formHtml = '<div id="input-form-'+activeInputUpt+'">'
+    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">'
+    +'<span style="font-family:var(--font-m);font-size:11px;color:var(--text3)">Tanggal:</span>'
+    +'<span style="font-family:var(--font-m);font-size:13px;font-weight:700;color:var(--accent);'
+    +'background:rgba(88,166,255,0.08);border:1px solid rgba(88,166,255,0.2);border-radius:6px;padding:4px 12px">'+todayStr+'</span>'
+    +'<span style="font-size:10px;font-family:var(--font-m);color:var(--text3);margin-left:4px">⚠ Tidak dapat diedit</span>'
+    +'</div>'
+    +buildRows(activeInputUpt)
+    +'<div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--line)">'
+    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
+    +'<label style="font-family:var(--font-m);font-size:11px;color:var(--text3);white-space:nowrap">🔒 Password UPT:</label>'
+    +'<input type="password" id="inp_pwd_'+activeInputUpt+'" placeholder="Password '+activeInputUpt+'" '
+    +'style="flex:1;background:rgba(255,255,255,0.05);border:1px solid var(--line);border-radius:6px;'
+    +'color:var(--text);font-family:var(--font-m);font-size:12px;padding:8px 12px;outline:none" '
+    +'onkeydown="if(event.key===\'Enter\')submitInputData(\''+activeInputUpt+'\',\''+todayStr+'\')" >'
+    +'</div>'
+    +'<div style="display:flex;gap:10px">'
+    +'<button onclick="submitInputData(\''+activeInputUpt+'\',\''+todayStr+'\')" '
+    +'style="flex:1;padding:12px;background:linear-gradient(135deg,#1f6feb,#58a6ff);border:none;border-radius:8px;'
+    +'color:#fff;font-family:var(--font-m);font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.05em;'
+    +'box-shadow:0 4px 16px rgba(88,166,255,0.3)">'
+    +'📤 KIRIM DATA</button>'
+    +'<button onclick="resetInputForm(\''+activeInputUpt+'\')" '
+    +'style="padding:12px 20px;background:rgba(255,255,255,0.05);border:1px solid var(--line);border-radius:8px;'
+    +'color:var(--text3);font-family:var(--font-m);font-size:12px;cursor:pointer">'
+    +'<button onclick="showWAText(\''+activeInputUpt+'\'\,\''+todayStr+'\')" '
+    +'style="padding:12px 16px;background:rgba(63,185,80,0.15);border:1px solid rgba(63,185,80,0.3);border-radius:8px;'
+    +'color:#3fb950;font-family:var(--font-m);font-size:12px;font-weight:600;cursor:pointer">'
+    +'📝 Format Teks</button>'
+    +'<button onclick="resetInputForm(\''+activeInputUpt+'\')" '
+    +'style="padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid var(--line);border-radius:8px;'
+    +'color:var(--text3);font-family:var(--font-m);font-size:12px;cursor:pointer">'
+    +'Reset</button>'
+    +'</div>'
+    +'</div>'
+    +'<div id="submit-status-'+activeInputUpt+'" style="margin-top:12px;font-family:var(--font-m);font-size:11px;text-align:center"></div>'
+    +'</div>';
+
+  document.getElementById('view-input').innerHTML =
+    '<div class="sec-head"><span class="sec-title">Input Data Harian</span><span class="sec-rule"></span>'
+    +'<span class="sec-meta">'+todayStr+'</span>'
+    +'<button onclick="showRekapWAText(\''+todayStr+'\')" '
+    +'style="margin-left:auto;padding:6px 14px;background:rgba(212,153,34,0.15);border:1px solid rgba(212,153,34,0.3);'
+    +'border-radius:6px;color:#d29922;font-family:var(--font-m);font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap">'
+    +'📊 Rekap UIT JBM</button>'
+    +'</div>'
+    + appsScriptSection
+    +'<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">'+uptTabs+'</div>'
+    +'<div class="chart-card">'+formHtml+'</div>';
+}
+
+function hexToRgb(hex){
+  var r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return r+','+g+','+b;
+}
+
+function markChanged(el){
+  el.style.borderColor='#ffa502';
+  el.style.background='rgba(255,165,2,0.08)';
+}
+
+function switchInputUpt(upt){
+  window._activeInputUpt = upt;
+  renderInputForm();
+}
+
+function saveAppsScriptUrl(){
+  var url = document.getElementById('apps-script-url').value.trim();
+  window.APPS_SCRIPT_URL = url;
+  localStorage.setItem('apps_script_url', url);
+  var btn = document.querySelector('#apps-script-url + button');
+  if(btn){ btn.textContent='✓ Tersimpan'; btn.style.color='#3fb950'; setTimeout(function(){btn.textContent='Simpan';btn.style.color='#58a6ff';},2000); }
+}
+
+function resetInputForm(upt){
+  var n = WL.length-1;
+  var SUBS = ['G1 AHI Trafo','G1 Anti Binatang','G1 Relay Internal','G2 MV Aparatus','G3 Switchyard AHI','G4 GIS','G5 Common Facility',
+    'T1 Cable Sheath','T2 SUTT AHI','T2 ROW B1','T2 Anti Binatang','T2 Tapak Tower',
+    'P1 AHI Proteksi','P1 Design Proteksi','P2 AHI Catu Daya','P2 Design Catu Daya'];
+  SUBS.forEach(function(sk){
+    var grpKey = GROUP_OF[sk];
+    var arr = (D[upt]&&D[upt][grpKey]) ? D[upt][grpKey][sk] : null;
+    var prevO = (arr && arr.length>0 && arr[n]) ? safeO(arr,n) : 0;
+    var oEl = document.getElementById('inp_o_'+upt+'_'+sk.replace(/\s/g,'_'));
+    var jEl = document.getElementById('inp_j_'+upt+'_'+sk.replace(/\s/g,'_'));
+    if(oEl){ oEl.value=prevO; oEl.style.borderColor='var(--line)'; oEl.style.background='rgba(255,255,255,0.05)'; }
+    if(jEl){ jEl.value=0; }
+  });
+}
+
+async function submitInputData(upt, tanggal){
+  var statusEl = document.getElementById('submit-status-'+upt);
+
+  // Validasi password
+  var pwdEl = document.getElementById('inp_pwd_'+upt);
+  var pwd = pwdEl ? pwdEl.value.trim() : '';
+  if(!pwd){
+    statusEl.innerHTML='<span style="color:#f85149">⚠ Password UPT belum diisi.</span>';
+    if(pwdEl) pwdEl.focus();
+    return;
+  }
+  if(pwd.toUpperCase() !== upt.toUpperCase()){
+    statusEl.innerHTML='<span style="color:#f85149">⚠ Password salah. Password adalah nama UPT.</span>';
+    if(pwdEl){ pwdEl.value=''; pwdEl.style.borderColor='#f85149'; pwdEl.focus(); }
+    setTimeout(function(){ if(pwdEl) pwdEl.style.borderColor='var(--line)'; }, 2000);
+    return;
+  }
+
+  var scriptUrl = window.APPS_SCRIPT_URL || localStorage.getItem('apps_script_url') || '';
+  if(!scriptUrl){
+    statusEl.innerHTML='<span style="color:#f85149">⚠ URL Apps Script belum diisi.</span>';
+    return;
+  }
+
+  // Collect data
+  var SUBS = ['G1 AHI Trafo','G1 Anti Binatang','G1 Relay Internal','G2 MV Aparatus','G3 Switchyard AHI','G4 GIS','G5 Common Facility',
+    'T1 Cable Sheath','T2 SUTT AHI','T2 ROW B1','T2 Anti Binatang','T2 Tapak Tower',
+    'P1 AHI Proteksi','P1 Design Proteksi','P2 AHI Catu Daya','P2 Design Catu Daya'];
+  var n = WL.length > 0 ? WL.length-1 : 0;
+  var row = [tanggal];
+  SUBS.forEach(function(sk){
+    var grpKey = GROUP_OF[sk];
+    var grpData = D[upt] && D[upt][grpKey];
+    var arr = grpData && grpData[sk];
+    var prevT = safeT(arr, arr ? arr.length-1 : 0);
+    var oEl = document.getElementById('inp_o_'+upt+'_'+sk.replace(/\s/g,'_'));
+    var jEl = document.getElementById('inp_j_'+upt+'_'+sk.replace(/\s/g,'_'));
+    var o = oEl ? (parseInt(oEl.value)||0) : 0;
+    var j = jEl ? (parseInt(jEl.value)||0) : 0;
+    row.push(prevT, o, j);
+  });
+
+  statusEl.innerHTML='<span style="color:#d29922">⏳ Mengirim data ke Google Sheets...</span>';
+
+  // Gunakan JSONP approach untuk bypass CORS
+  // Kirim data via URL parameter, Apps Script baca dari doGet
+  var rowEncoded = encodeURIComponent(JSON.stringify(row));
+  var url = scriptUrl + '?upt='+encodeURIComponent(upt)
+    +'&tanggal='+encodeURIComponent(tanggal)
+    +'&row='+rowEncoded
+    +'&callback=_gsCallback';
+
+  window._gsCallback = function(result){
+    // cleanup
+    var s = document.getElementById('_gs_script');
+    if(s) s.remove();
+    delete window._gsCallback;
+    if(result && result.status==='ok'){
+      statusEl.innerHTML='<span style="color:#3fb950">✓ Data berhasil dikirim ke Google Sheets! Dashboard akan refresh dalam 1 jam.</span>';
+    } else {
+      statusEl.innerHTML='<span style="color:#f85149">⚠ Error: '+(result&&result.message||'Unknown error')+'</span>';
+    }
+  };
+
+  // Timeout fallback
+  var timeout = setTimeout(function(){
+    if(window._gsCallback){
+      delete window._gsCallback;
+      var s = document.getElementById('_gs_script');
+      if(s) s.remove();
+      // no-cors fetch as last resort - we won't get response but data may still go through
+      statusEl.innerHTML='<span style="color:#d29922">⚠ Tidak ada respons dari Apps Script. Coba cek Google Sheets apakah data sudah masuk.</span>';
+    }
+  }, 10000);
+
+  // Inject script tag for JSONP
+  var sc = document.createElement('script');
+  sc.id = '_gs_script';
+  sc.src = url;
+  sc.onerror = function(){
+    clearTimeout(timeout);
+    delete window._gsCallback;
+    // Fallback: try no-cors fetch (fire and forget)
+    fetch(scriptUrl+'?upt='+encodeURIComponent(upt)+'&tanggal='+encodeURIComponent(tanggal)+'&row='+rowEncoded, {
+      method:'GET', mode:'no-cors'
+    }).then(function(){
+      statusEl.innerHTML='<span style="color:#d29922">⚠ Data dikirim (no-cors). Cek Google Sheets untuk konfirmasi.</span>';
+    }).catch(function(){
+      statusEl.innerHTML='<span style="color:#f85149">⚠ Gagal terhubung. Pastikan URL Apps Script benar dan sudah di-deploy sebagai Web App (Anyone).</span>';
+    });
+  };
+  document.head.appendChild(sc);
+}
+
+// ── Format Teks WA ───────────────────────────────────────────────────────
+var WA_SECTIONS = [
+  {header:'*G1 Anomali Trafo :*', items:[
+    {label:'AHI TRAFO (Critical)',       sk:'G1 AHI Trafo'},
+    {label:'Proteksi Anti Binatang',     sk:'G1 Anti Binatang'},
+    {label:'Proteksi Relay Internal',    sk:'G1 Relay Internal'},
+  ]},
+  {header:'*G2 Anomali MV Aparatus :*', items:[
+    {label:'AHI MV Aparatus',            sk:'G2 MV Aparatus'},
+    {label:'Partial Discharge',          sk:null, fixed:0},
+    {label:'Hotspot',                    sk:null, fixed:0},
+    {label:'Anti Binatang',              sk:null, fixed:0},
+  ]},
+  {header:'*G3 Anomali Switchyard*', items:[
+    {label:'Switchyard AHI (PMT, CT, LA)', sk:'G3 Switchyard AHI'},
+    {label:'Grounding Mesh',             sk:null, fixed:0},
+    {label:'Anti Binatang',              sk:null, fixed:0},
+    {label:'Anti Layang-Layang',         sk:null, fixed:0},
+    {label:'Hotspot Switchyard',         sk:null, fixed:0},
+  ]},
+  {header:'*G4 Anomali GIS :*', items:[
+    {label:'Kebocoran Gas SF6',          sk:'G4 GIS'},
+    {label:'Kualitas Gas SF6',           sk:null, fixed:0},
+    {label:'Partial Discharge',          sk:null, fixed:0},
+    {label:'Jumlah (Kali) Mekanik',      sk:null, fixed:0},
+    {label:'Sistem Hidrolis',            sk:null, fixed:0},
+    {label:'Grounding',                  sk:null, fixed:0},
+  ]},
+  {header:'*G5 Anomali Common Facility :*', items:[
+    {label:'Atap Gedung',                sk:'G5 Common Facility'},
+    {label:'Pagar GI',                   sk:null, fixed:0},
+    {label:'Air Conditioner',            sk:null, fixed:0},
+    {label:'Dak Kabel',                  sk:null, fixed:0},
+    {label:'Pondasi',                    sk:null, fixed:0},
+  ]},
+  {header:'*T1. Anomali SKTT / SKLT*', items:[
+    {label:'Kebocoran Minyak',           sk:null, fixed:0},
+    {label:'Cable Sheath',               sk:'T1 Cable Sheath'},
+    {label:'Joint Cable',                sk:null, fixed:0},
+    {label:'Penanda Jalur',              sk:null, fixed:0},
+    {label:'Buoy',                       sk:null, fixed:0},
+  ]},
+  {header:'*T2. Anomali SUTT/SUTET*', items:[
+    {label:'AHI',                        sk:'T2 SUTT AHI'},
+    {label:'ROW K',                      sk:null, fixed:0},
+    {label:'ROW B1*',                    sk:'T2 ROW B1'},
+    {label:'Anti Binatang',              sk:'T2 Anti Binatang'},
+    {label:'Tapak Tower',                sk:'T2 Tapak Tower'},
+  ]},
+  {header:'*P1. Anomali Proteksi*', items:[
+    {label:'AHI',                        sk:'P1 AHI Proteksi'},
+    {label:'Design',                     sk:'P1 Design Proteksi'},
+  ]},
+  {header:'*P2. Anomali Catu Daya*', items:[
+    {label:'AHI',                        sk:'P2 AHI Catu Daya'},
+    {label:'Design',                     sk:'P2 Design Catu Daya'},
+  ]},
+];
+
+var WA_LETTERS = ['a','b','c','d','e','f','g','h'];
+
+function generateWAText(upt, tanggal){
+  var n = WL.length-1;
+  var lines = [];
+  lines.push('*KONDISI COMMON ENEMY UPT '+upt+' '+tanggal+'*');
+  lines.push('target/open/tinjut:');
+
+  WA_SECTIONS.forEach(function(sec){
+    lines.push(sec.header);
+    sec.items.forEach(function(item, idx){
+      var letter = WA_LETTERS[idx] || String.fromCharCode(97+idx);
+      var t=0, o=0, j=0;
+      if(item.sk){
+        var grpKey = GROUP_OF[item.sk];
+        var arr = D[upt][grpKey] && D[upt][grpKey][item.sk];
+        if(arr && arr.length>0){
+          // Try to get from input form first
+          var oEl = document.getElementById('inp_o_'+upt+'_'+item.sk.replace(/\s/g,'_'));
+          var jEl = document.getElementById('inp_j_'+upt+'_'+item.sk.replace(/\s/g,'_'));
+          t = safeT(arr,n);
+          o = oEl ? (parseInt(oEl.value)||0) : safeO(arr,n);
+          j = jEl ? (parseInt(jEl.value)||0) : 0;
+        }
+      }
+      lines.push(letter+'. '+item.label+' : '+t+' / '+o+' / '+j);
+    });
+  });
+  return lines.join('\n');
+}
+
+function showWAText(upt, tanggal){
+  var text = generateWAText(upt, tanggal);
+  // Show modal
+  var modal = document.getElementById('wa-modal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'wa-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:20px';
+    var mH='<div style="background:#0d1117;border:1px solid rgba(88,166,255,0.2);border-radius:12px;width:100%;max-width:600px;max-height:80vh;display:flex;flex-direction:column">';
+    mH+='<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(88,166,255,0.1)">';
+    mH+='<span style="font-family:var(--font-m);font-size:12px;font-weight:700;color:var(--accent)">Format Teks Laporan</span>';
+    mH+='<button onclick="closeWAModal()" style="background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;line-height:1">×</button>';
+    mH+='</div>';
+    mH+='<div style="padding:16px 20px;overflow-y:auto;flex:1">';
+    mH+='<textarea id="wa-text-area" readonly style="width:100%;height:400px;background:rgba(255,255,255,0.03);border:1px solid var(--line);border-radius:8px;color:var(--text);font-family:var(--font-m);font-size:11px;padding:12px;resize:none;line-height:1.6;box-sizing:border-box"></textarea>';
+    mH+='</div>';
+    mH+='<div style="padding:12px 20px;border-top:1px solid rgba(88,166,255,0.1);display:flex;gap:8px">';
+    mH+='<button id="wa-copy-btn" onclick="copyWAText()" style="flex:1;padding:10px;background:linear-gradient(135deg,#1f6feb,#58a6ff);border:none;border-radius:8px;color:#fff;font-family:var(--font-m);font-size:12px;font-weight:700;cursor:pointer">📋 Copy Teks</button>';
+    mH+='<button onclick="closeWAModal()" style="padding:10px 20px;background:rgba(255,255,255,0.05);border:1px solid var(--line);border-radius:8px;color:var(--text3);font-family:var(--font-m);font-size:12px;cursor:pointer">Tutup</button>';
+    mH+='</div></div>';
+    modal.innerHTML = mH;
+    document.body.appendChild(modal);
+  }
+  document.getElementById('wa-text-area').value = text;
+  modal.style.display = 'flex';
+}
+
+function closeWAModal(){
+  var m=document.getElementById('wa-modal');
+  if(m) m.style.display='none';
+}
+
+function copyWAText(){
+  var ta = document.getElementById('wa-text-area');
+  ta.select();
+  document.execCommand('copy');
+  var btn = document.getElementById('wa-copy-btn');
+  btn.textContent = '✓ Tersalin!';
+  btn.style.background = 'linear-gradient(135deg,#1a6b3a,#3fb950)';
+  setTimeout(function(){ btn.textContent='📋 Copy Teks'; btn.style.background='linear-gradient(135deg,#1f6feb,#58a6ff)'; },2000);
+}
+
+function generateRekapWAText(tanggal){
+  var n = WL.length-1;
+  var lines = [];
+  lines.push('*KONDISI COMMON ENEMY PT PLN Persero UIT JBM '+tanggal+'*');
+  lines.push('*I. TARGET / OPEN / TINJUT*');
+
+  // For each WA section, sum T, O, J across all 6 UPTs
+  WA_SECTIONS.forEach(function(sec){
+    lines.push(sec.header);
+    sec.items.forEach(function(item, idx){
+      var letter = WA_LETTERS[idx] || String.fromCharCode(97+idx);
+      var totT=0, totO=0, totJ=0;
+      if(item.sk){
+        UPTS.forEach(function(upt){
+          var grpKey = GROUP_OF[item.sk];
+          var arr = D[upt][grpKey] && D[upt][grpKey][item.sk];
+          if(arr && arr.length>0){
+            totT += safeT(arr,n);
+            totO += safeO(arr,n);
+            totJ += safeJ(arr,n)||0;
+          }
+        });
+        // Also check input form if currently open
+        UPTS.forEach(function(upt){
+          var jEl = document.getElementById('inp_j_'+upt+'_'+item.sk.replace(/\s/g,'_'));
+          if(jEl){ totJ += parseInt(jEl.value)||0; }
+        });
+      }
+      // For null sk (fixed=0), always 0/0/0
+      lines.push(letter+'. '+item.label+' : '+totT+' / '+totO+' / '+totJ);
+    });
+  });
+  return lines.join('\n');
+}
+
+function showRekapWAText(tanggal){
+  var text = generateRekapWAText(tanggal);
+  // Remove existing modal and recreate fresh
+  var old = document.getElementById('wa-modal');
+  if(old) old.remove();
+  var modal = document.createElement('div');
+  modal.id = 'wa-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:20px';
+  var mH='<div style="background:#0d1117;border:1px solid rgba(212,153,34,0.25);border-radius:12px;width:100%;max-width:620px;max-height:80vh;display:flex;flex-direction:column">';
+  mH+='<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(212,153,34,0.15)">';
+  mH+='<span style="font-family:var(--font-m);font-size:12px;font-weight:700;color:#d29922">📊 Rekap UIT JBM</span>';
+  mH+='<button onclick="closeWAModal()" style="background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;line-height:1">×</button>';
+  mH+='</div>';
+  mH+='<div style="padding:16px 20px;overflow-y:auto;flex:1">';
+  mH+='<textarea id="wa-text-area" readonly style="width:100%;height:440px;background:rgba(255,255,255,0.03);border:1px solid var(--line);border-radius:8px;color:var(--text);font-family:var(--font-m);font-size:11px;padding:12px;resize:none;line-height:1.6;box-sizing:border-box"></textarea>';
+  mH+='</div>';
+  mH+='<div style="padding:12px 20px;border-top:1px solid rgba(212,153,34,0.15);display:flex;gap:8px">';
+  mH+='<button id="wa-copy-btn" onclick="copyWAText()" style="flex:1;padding:10px;background:linear-gradient(135deg,#7a5000,#d29922);border:none;border-radius:8px;color:#fff;font-family:var(--font-m);font-size:12px;font-weight:700;cursor:pointer">📋 Copy Teks Rekap</button>';
+  mH+='<button onclick="closeWAModal()" style="padding:10px 20px;background:rgba(255,255,255,0.05);border:1px solid var(--line);border-radius:8px;color:var(--text3);font-family:var(--font-m);font-size:12px;cursor:pointer">Tutup</button>';
+  mH+='</div></div>';
+  modal.innerHTML = mH;
+  document.body.appendChild(modal);
+  document.getElementById('wa-text-area').value = text;
 }
 
 function renderAll(){
   renderNavTabs();
+  // Guard: jangan render jika data belum loaded
+  var dataReady = WL && WL.length>0 && D && D.MALANG && D.MALANG.G && Object.keys(D.MALANG.G).length>0;
+  if(!dataReady){
+    if(activeView!=='input') return;
+  }
   if(activeView==='rekap') renderRekap();
   else if(activeView==='upt') renderUptView();
   else if(activeView==='performance') renderPerformance();
+  else if(activeView==='input') renderInputForm();
 }
 
 document.getElementById('topdate').textContent=LAST_UPDATE;
 renderAll();
+
+
+// ── Boot ─────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function(){
+  initDashboard();
+});
 </script>
 </body>
 </html>
