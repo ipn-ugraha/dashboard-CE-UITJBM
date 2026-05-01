@@ -1251,14 +1251,6 @@ function renderInputForm(){
     +'<div id="submit-status-'+activeInputUpt+'" style="margin-top:12px;font-family:var(--font-m);font-size:11px;text-align:center"></div>'
     +'</div>';
 
-  // Debug info untuk diagnosa tanggal
-  var dbgTodayShort = getTodayShort();
-  var dbgWLIdx = getTodayWLIndex();
-  var dbgWLLast = WL.length>0 ? WL[WL.length-1] : 'kosong';
-  var refArr2 = D['MALANG']&&D['MALANG']['G']&&D['MALANG']['G']['G1 AHI Trafo'];
-  var dbgArrLen = refArr2 ? refArr2.length : 0;
-  var dbgInfo = 'WL: '+WL.length+' baris | Data MALANG: '+dbgArrLen+' baris | Index hari ini: '+dbgWLIdx+' | WL terakhir: "'+dbgWLLast+'"';
-
   document.getElementById('view-input').innerHTML =
     '<div class="sec-head"><span class="sec-title">Input Data Harian</span><span class="sec-rule"></span>'
     +'<span class="sec-meta">'+todayDisp+'</span>'
@@ -1266,10 +1258,6 @@ function renderInputForm(){
     +'style="margin-left:auto;padding:6px 14px;background:rgba(212,153,34,0.15);border:1px solid rgba(212,153,34,0.3);'
     +'border-radius:6px;color:#d29922;font-family:var(--font-m);font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap">'
     +'📊 Rekap UIT JBM</button>'
-    +'</div>'
-    +'<div id="dbg-panel" style="background:rgba(255,165,2,0.06);border:1px solid rgba(255,165,2,0.2);border-radius:6px;padding:8px 12px;margin-bottom:12px;font-family:var(--font-m);font-size:10px;color:#d29922;display:flex;align-items:center;justify-content:space-between">'
-    +'<span>🔍 Debug: '+dbgInfo+'</span>'
-    +'<button onclick="document.getElementById(\'dbg-panel\').style.display=\'none\'" style="background:none;border:none;color:#d29922;cursor:pointer;font-size:12px">×</button>'
     +'</div>'
     + appsScriptSection
     +'<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">'+uptTabs+'</div>'
