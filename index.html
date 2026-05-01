@@ -228,12 +228,11 @@ function parseCSV(text){
 }
 
 function buildDBlock(rows){
-  // rows[0] = header, rows[1..] = data rows
-  // Kolom: Tanggal | SK1_T | SK1_O | SK1_J | SK2_T | SK2_O | SK2_J | ...
   if(rows.length < 2) return null;
   var wl = [];
+  var rawDates = []; // simpan tanggal mentah dari col A
   var data = {G:{},T:{},P:{}};
-  var tinjutHist = {}; // tinjut per tanggal: {date: {sk: val}}
+  var tinjutHist = {};
   
   SUB_KEYS.forEach(function(sk){
     var grp = GROUP_OF[sk];
@@ -245,6 +244,7 @@ function buildDBlock(rows){
     if(!row[0] || row[0].trim()==='') continue;
     var date = row[0].trim();
     wl.push(date);
+    rawDates.push(date);
     tinjutHist[date] = {};
     
     SUB_KEYS.forEach(function(sk, si){
@@ -259,7 +259,7 @@ function buildDBlock(rows){
       if(j>0) tinjutHist[date][sk] = j;
     });
   }
-  return {wl:wl, data:data, tinjutHist:tinjutHist};
+  return {wl:wl, rawDates:rawDates, data:data, tinjutHist:tinjutHist};
 }
 
 async function fetchCSV(gid){
@@ -330,6 +330,7 @@ async function initDashboard(){
       if(!parsed){ allOk=false; return; }
       if(!wlRef) wlRef = parsed.wl;
       D[upt] = parsed.data;
+      RAW_DATES[upt] = parsed.rawDates || parsed.wl || [];
       parsedData[upt] = parsed;
     });
     
@@ -431,6 +432,8 @@ var D = {
   GRESIK:{G:{},T:{},P:{}},BALI:{G:{},T:{},P:{}},
   MADIUN:{G:{},T:{},P:{}},PROBOLINGGO:{G:{},T:{},P:{}}
 };
+// RAW_DATES: tanggal mentah per UPT dari col A sheet
+var RAW_DATES = {MALANG:[],SURABAYA:[],GRESIK:[],BALI:[],MADIUN:[],PROBOLINGGO:[]};
 
 // BA_DATA: {UPT: {sk: jumlah_ba}}
 var BA_DATA = {};
@@ -1667,37 +1670,52 @@ function stripYear(d){
   return String(d).trim().replace(/\s+\d{4}\s*$/, '').trim();
 }
 
-// Helper: Cek apakah UPT sudah punya data hari ini
-// Logic: bandingkan panjang array data dengan WL
-// Jika arr.length > WL.length → ada data ekstra (hari ini sudah diinput)
-// Jika arr.length === WL.length → belum ada data hari ini
-// "index hari ini" = arr.length - 1 jika sudah ada data baru
-function getTodayWLIndex(){
-  // Gunakan G1 AHI Trafo MALANG sebagai referensi
-  var refUpt = UPTS[0];
-  var refArr = D[refUpt]&&D[refUpt]['G']&&D[refUpt]['G']['G1 AHI Trafo'];
-  if(!refArr) return -1;
-  if(refArr.length > WL.length) return refArr.length - 1; // ada data baru
-  return -1; // belum ada data hari ini
+// Helper: parse tanggal dari berbagai format ke {d,m,y}
+function parseDateRaw(str){
+  if(!str) return null;
+  var s = String(str).trim();
+  var mi = ['jan','feb','mar','apr','mei','jun','jul','agt','sep','okt','nov','des'];
+  var me = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+  // DD/MM/YYYY atau DD-MM-YYYY
+  var m1 = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if(m1) return {d:parseInt(m1[1]),m:parseInt(m1[2])-1,y:parseInt(m1[3])};
+  // DD Mon YYYY atau DD Mon
+  var m2 = s.match(/^(\d{1,2})\s+([a-zA-Z]+)(?:\s+(\d{4}))?$/i);
+  if(m2){
+    var mn = m2[2].toLowerCase();
+    var mi2 = mi.indexOf(mn); if(mi2<0) mi2=me.indexOf(mn);
+    if(mi2>=0) return {d:parseInt(m2[1]),m:mi2,y:m2[3]?parseInt(m2[3]):new Date().getFullYear()};
+  }
+  return null;
 }
 
-// Helper: cek apakah UPT tertentu sudah punya data hari ini
-function uptHasTodayData(upt){
-  var arr = D[upt]&&D[upt]['G']&&D[upt]['G']['G1 AHI Trafo'];
-  if(!arr) return false;
-  var refUpt = UPTS[0];
-  var refArr = D[refUpt]&&D[refUpt]['G']&&D[refUpt]['G']['G1 AHI Trafo'];
-  var maxLen = refArr ? Math.max(arr.length, refArr.length) : arr.length;
-  return arr.length >= maxLen && arr.length > WL.length;
+// Helper: cek apakah tanggal mentah = hari ini
+function isToday(dateStr){
+  var p = parseDateRaw(dateStr);
+  if(!p) return false;
+  var t = new Date();
+  return p.d===t.getDate() && p.m===t.getMonth() && p.y===t.getFullYear();
 }
 
-// Helper: get today's index for a specific UPT
+// Helper: get index hari ini dari RAW_DATES[upt]
 function getTodayIdxForUpt(upt, sk){
-  var grpKey = GROUP_OF[sk];
-  var arr = D[upt]&&D[upt][grpKey]&&D[upt][grpKey][sk];
-  if(!arr||arr.length===0) return -1;
-  if(arr.length > WL.length) return arr.length - 1;
+  var dates = RAW_DATES[upt];
+  if(!dates||dates.length===0) return -1;
+  // Cek dari belakang (lebih efisien)
+  for(var i=dates.length-1; i>=Math.max(0,dates.length-3); i--){
+    if(isToday(dates[i])) return i;
+  }
   return -1;
+}
+
+// Helper: cek apakah UPT sudah punya data hari ini
+function uptHasTodayData(upt){
+  return getTodayIdxForUpt(upt, 'G1 AHI Trafo') >= 0;
+}
+
+// Helper: global today index (pakai MALANG sebagai ref)
+function getTodayWLIndex(){
+  return getTodayIdxForUpt('MALANG', 'G1 AHI Trafo');
 }
 
 // Helper: get J value for today for a specific UPT/sk
@@ -1752,6 +1770,7 @@ async function refreshData(){
       if(!parsed) return;
       if(!wlRef) wlRef = parsed.wl;
       D[upt] = parsed.data;
+      RAW_DATES[upt] = parsed.rawDates || parsed.wl || [];
     });
     if(wlRef){
       WL.length = 0;
