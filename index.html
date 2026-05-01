@@ -1365,18 +1365,28 @@ async function submitInputData(upt, tanggal){
     delete window._gsCallback;
     if(result && result.status==='ok'){
       statusEl.innerHTML='<span style="color:#3fb950">✓ Data berhasil dikirim! Memuat ulang data...</span>';
-      // Auto refresh data setelah 3 detik (tunggu Apps Script selesai tulis ke sheet)
-      setTimeout(async function(){
-        statusEl.innerHTML='<span style="color:#d29922">⏳ Mengambil data terbaru dari sheet...</span>';
-        var ok = await refreshData();
-        if(ok){
+      // Auto refresh dengan retry - Google Sheets CSV cache delay ~30-60 detik
+      var retryCount = 0;
+      var maxRetry = 5;
+      var retryDelay = 10000; // 10 detik per retry
+
+      async function tryRefresh(){
+        retryCount++;
+        statusEl.innerHTML='<span style="color:#d29922">⏳ Mengambil data terbaru... (percobaan '+retryCount+'/'+maxRetry+')</span>';
+        await refreshData();
+        // Cek apakah data hari ini sudah muncul
+        var todayIdx = getTodayIdxForUpt(upt, 'G1 AHI Trafo');
+        if(todayIdx >= 0){
           statusEl.innerHTML='<span style="color:#3fb950">✓ Data berhasil dikirim dan dimuat! Kolom sudah diperbarui.</span>';
-          // Re-render form untuk update kolom DATA TINJUT HARI INI
           renderInputForm();
+        } else if(retryCount < maxRetry){
+          statusEl.innerHTML='<span style="color:#d29922">⏳ Menunggu Google Sheets update... ('+retryCount+'/'+maxRetry+') coba lagi dalam '+(retryDelay/1000)+' detik</span>';
+          setTimeout(tryRefresh, retryDelay);
         } else {
-          statusEl.innerHTML='<span style="color:#d29922">✓ Data terkirim. Refresh halaman jika data belum muncul.</span>';
+          statusEl.innerHTML='<span style="color:#ffa502">✓ Data terkirim ke sheet. Google Sheets memerlukan waktu beberapa menit untuk sync. Refresh halaman dalam 1-2 menit.</span>';
         }
-      }, 3000);
+      }
+      setTimeout(tryRefresh, 5000);
     } else {
       statusEl.innerHTML='<span style="color:#f85149">⚠ Error: '+(result&&result.message||'Unknown error')+'</span>';
     }
