@@ -1145,11 +1145,8 @@ function renderInputForm(){
           +'</td>'
           +'<td style="padding:7px 6px;text-align:center">'
             +(function(){
-              var arr2=(D[upt]&&D[upt][GROUP_OF[sk]])?D[upt][GROUP_OF[sk]][sk]:null;
-              if(!arr2||arr2.length===0) return '<span style="font-family:var(--font-m);font-size:11px;color:var(--text3)">N/A</span>';
-              var lastEntry=arr2[arr2.length-1];
-              var jVal=lastEntry?lastEntry.j:undefined;
-              if(jVal===undefined||jVal===null) return '<span style="font-family:var(--font-m);font-size:11px;color:var(--text3)">N/A</span>';
+              var jVal = getTodayJ(upt, sk);
+              if(jVal===null) return '<span style="font-family:var(--font-m);font-size:11px;color:var(--text3)">belum</span>';
               return '<span style="font-family:var(--font-m);font-size:12px;font-weight:600;color:#39d353">'+jVal+'</span>';
             })()
           +'</td>'
@@ -1453,6 +1450,7 @@ var WA_SECTIONS = [
 var WA_LETTERS = ['a','b','c','d','e','f','g','h'];
 
 function generateWAText(upt, tanggal){
+  var todayIdx = getTodayWLIndex();
   var n = WL.length-1;
   var lines = [];
   lines.push('*KONDISI COMMON ENEMY UPT '+upt+' '+tanggal+'*');
@@ -1460,19 +1458,25 @@ function generateWAText(upt, tanggal){
 
   WA_SECTIONS.forEach(function(sec){
     lines.push(sec.header);
-    sec.items.forEach(function(item, idx){
-      var letter = WA_LETTERS[idx] || String.fromCharCode(97+idx);
-      var t=0, o=0, j=0;
+    sec.items.forEach(function(item, sidx){
+      var letter = WA_LETTERS[sidx] || String.fromCharCode(97+sidx);
+      var t=0, o=0, j='blm';
       if(item.sk){
         var grpKey = GROUP_OF[item.sk];
-        var arr = D[upt][grpKey] && D[upt][grpKey][item.sk];
-        if(arr && arr.length>0){
-          // Try to get from input form first
-          var oEl = document.getElementById('inp_o_'+upt+'_'+item.sk.replace(/\s/g,'_'));
-          var jEl = document.getElementById('inp_j_'+upt+'_'+item.sk.replace(/\s/g,'_'));
-          t = safeT(arr,n);
-          o = oEl ? (parseInt(oEl.value)||0) : safeO(arr,n);
-          j = jEl ? (parseInt(jEl.value)||0) : 0;
+        var arr = D[upt]&&D[upt][grpKey] ? D[upt][grpKey][item.sk] : null;
+        var oEl = document.getElementById('inp_o_'+upt+'_'+item.sk.replace(/\s/g,'_'));
+        var jEl = document.getElementById('inp_j_'+upt+'_'+item.sk.replace(/\s/g,'_'));
+        if(arr&&arr.length>0){
+          var useIdx = todayIdx>=0&&todayIdx<arr.length ? todayIdx : arr.length-1;
+          var pt = arr[useIdx]||arr[arr.length-1]||{t:0,o:0,j:0};
+          t = pt.t||0;
+          o = oEl ? (parseInt(oEl.value)||0) : (pt.o||0);
+          if(jEl&&parseInt(jEl.value)>0){
+            j = parseInt(jEl.value);
+          } else if(todayIdx>=0&&todayIdx<arr.length&&arr[todayIdx]){
+            var jv = arr[todayIdx].j;
+            j = (jv!==undefined&&jv!==null) ? jv : 'blm';
+          }
         }
       }
       lines.push(letter+'. '+item.label+' : '+t+' / '+o+' / '+j);
@@ -1524,41 +1528,69 @@ function copyWAText(){
 }
 
 function generateRekapWAText(tanggal){
-  var n = WL.length-1;
+  var todayIdx = getTodayWLIndex();
   var lines = [];
   lines.push('*KONDISI COMMON ENEMY PT PLN Persero UIT JBM '+tanggal+'*');
   lines.push('*I. TARGET / OPEN / TINJUT*');
 
-  // For each WA section, sum T, O, J across all 6 UPTs
   WA_SECTIONS.forEach(function(sec){
     lines.push(sec.header);
-    sec.items.forEach(function(item, idx){
-      var letter = WA_LETTERS[idx] || String.fromCharCode(97+idx);
-      var totT=0, totO=0, totJ=0;
+    sec.items.forEach(function(item, sidx){
+      var letter = WA_LETTERS[sidx] || String.fromCharCode(97+sidx);
+      var totT=0, totO=0, totJ=0; var hasAnyJ=false;
       if(item.sk){
         UPTS.forEach(function(upt){
           var grpKey = GROUP_OF[item.sk];
-          var arr = D[upt][grpKey] && D[upt][grpKey][item.sk];
-          if(arr && arr.length>0){
-            totT += safeT(arr,n);
-            totO += safeO(arr,n);
-            totJ += safeJ(arr,n)||0;
+          var arr = D[upt]&&D[upt][grpKey] ? D[upt][grpKey][item.sk] : null;
+          if(arr&&arr.length>0){
+            var useIdx = todayIdx>=0&&todayIdx<arr.length ? todayIdx : arr.length-1;
+            var pt = arr[useIdx]||arr[arr.length-1]||{t:0,o:0,j:0};
+            totT += pt.t||0;
+            totO += pt.o||0;
+            var jv = (todayIdx>=0&&todayIdx<arr.length&&arr[todayIdx]) ? arr[todayIdx].j : null;
+            var jEl = document.getElementById('inp_j_'+upt+'_'+item.sk.replace(/\s/g,'_'));
+            var jInput = jEl ? parseInt(jEl.value)||0 : 0;
+            if(jInput>0){ totJ+=jInput; hasAnyJ=true; }
+            else if(jv!==null&&jv!==undefined){ totJ+=jv; hasAnyJ=true; }
           }
         });
-        // Also check input form if currently open
-        UPTS.forEach(function(upt){
-          var jEl = document.getElementById('inp_j_'+upt+'_'+item.sk.replace(/\s/g,'_'));
-          if(jEl){ totJ += parseInt(jEl.value)||0; }
-        });
       }
-      // For null sk (fixed=0), always 0/0/0
-      lines.push(letter+'. '+item.label+' : '+totT+' / '+totO+' / '+totJ);
+      var jDisplay = hasAnyJ ? totJ : 'blm';
+      lines.push(letter+'. '+item.label+' : '+totT+' / '+totO+' / '+jDisplay);
     });
   });
   return lines.join('\n');
 }
 
+
+function closeRekapNotif(){var m=document.getElementById('rekap-notif');if(m)m.remove();}
+
 function showRekapWAText(tanggal){
+  // Validasi: cek apakah semua UPT sudah ada data hari ini
+  var missing = checkAllUPTHaveToday();
+  if(missing.length>0){
+    var statusEl = document.querySelector('[id^="submit-status-"]');
+    // Show notification near button
+    var notifId = 'rekap-notif';
+    var old = document.getElementById(notifId);
+    if(old) old.remove();
+    var notif = document.createElement('div');
+    notif.id = notifId;
+    notif.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);z-index:9999;'+
+      'background:#161b22;border:1px solid #f85149;border-radius:10px;padding:16px 24px;'+
+      'font-family:var(--font-m);font-size:12px;color:#e6edf3;max-width:420px;text-align:center;'+
+      'box-shadow:0 8px 32px rgba(0,0,0,0.5)';
+    notif.innerHTML = '<div style="color:#f85149;font-weight:700;margin-bottom:8px">⚠ Data Belum Lengkap</div>'+
+      '<div style="color:#8b949e;margin-bottom:12px">UPT berikut belum ada data untuk hari ini:</div>'+
+      '<div style="color:#ffa502;font-weight:700;margin-bottom:12px">'+missing.join(', ')+'</div>'+
+      '<div style="color:#484f58;font-size:10px;margin-bottom:12px">Silakan input data UPT tersebut terlebih dahulu</div>'+
+      '<button onclick="closeRekapNotif()" '+
+      'style="padding:6px 20px;background:rgba(248,81,73,0.15);border:1px solid rgba(248,81,73,0.3);'+
+      'border-radius:6px;color:#f85149;font-family:var(--font-m);font-size:11px;cursor:pointer">Tutup</button>';
+    document.body.appendChild(notif);
+    setTimeout(function(){ closeRekapNotif(); }, 6000);
+    return;
+  }
   var text = generateRekapWAText(tanggal);
   // Remove existing modal and recreate fresh
   var old = document.getElementById('wa-modal');
@@ -1581,6 +1613,43 @@ function showRekapWAText(tanggal){
   modal.innerHTML = mH;
   document.body.appendChild(modal);
   document.getElementById('wa-text-area').value = text;
+}
+
+// Helper: get today's date in short format matching WL ("01 Mei")
+function getTodayShort(){
+  var today = new Date();
+  var months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+  return String(today.getDate()).padStart(2,'0')+' '+months[today.getMonth()];
+}
+
+// Helper: get today's index in WL array (-1 if not found)
+function getTodayWLIndex(){
+  var ts = getTodayShort();
+  for(var i=0; i<WL.length; i++){
+    if(WL[i].trim()===ts) return i;
+  }
+  return -1;
+}
+
+// Helper: get value at today's WL index for a UPT/sk
+function getTodayJ(upt, sk){
+  var idx = getTodayWLIndex();
+  if(idx<0) return null; // hari ini belum ada di WL
+  var grpKey = GROUP_OF[sk];
+  var arr = (D[upt]&&D[upt][grpKey]) ? D[upt][grpKey][sk] : null;
+  if(!arr||idx>=arr.length) return null;
+  var pt = arr[idx];
+  return (pt && pt.j!==undefined) ? pt.j : null;
+}
+
+// Helper: get today's T/O/J for a UPT/sk
+function getTodayPt(upt, sk){
+  var idx = getTodayWLIndex();
+  if(idx<0) return null;
+  var grpKey = GROUP_OF[sk];
+  var arr = (D[upt]&&D[upt][grpKey]) ? D[upt][grpKey][sk] : null;
+  if(!arr||idx>=arr.length) return null;
+  return arr[idx] || null;
 }
 
 function renderAll(){
