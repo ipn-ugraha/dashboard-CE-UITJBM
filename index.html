@@ -1563,6 +1563,24 @@ function generateRekapWAText(tanggal){
 }
 
 
+function checkAllUPTHaveToday(){
+  var todayIdx = getTodayWLIndex();
+  var missing = [];
+  UPTS.forEach(function(upt){
+    if(todayIdx < 0){
+      missing.push(upt);
+    } else {
+      var grpData = D[upt]&&D[upt]['G'];
+      var arr = grpData ? grpData['G1 AHI Trafo'] : null;
+      if(!arr || todayIdx>=arr.length || !arr[todayIdx]){
+        missing.push(upt);
+      }
+    }
+  });
+  return missing;
+}
+
+
 function closeRekapNotif(){var m=document.getElementById('rekap-notif');if(m)m.remove();}
 
 function showRekapWAText(tanggal){
@@ -1622,12 +1640,43 @@ function getTodayShort(){
   return String(today.getDate()).padStart(2,'0')+' '+months[today.getMonth()];
 }
 
+// Helper: normalize date string for comparison (trim, lowercase, remove extra spaces)
+function normDate(d){
+  if(!d) return '';
+  // Handle "01 Mei", "1 Mei", "01 Mei 2026" etc
+  var s = String(d).trim().toLowerCase();
+  // Remove year part if present
+  s = s.replace(/\s+\d{4}$/, '');
+  // Normalize leading zero
+  s = s.replace(/^(\d)\s/, '0$1 ');
+  // Normalize month names (case insensitive)
+  return s;
+}
+
 // Helper: get today's index in WL array (-1 if not found)
 function getTodayWLIndex(){
-  var ts = getTodayShort();
+  var ts = normDate(getTodayShort());
+  // Also try today without leading zero and common month aliases
+  var today = new Date();
+  var months_id = ['jan','feb','mar','apr','mei','jun','jul','agt','sep','okt','nov','des'];
+  var months_en = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+  var mIdx = today.getMonth();
+  var day = today.getDate();
+  var dayStr0 = String(day).padStart(2,'0');
+  var dayStr1 = String(day);
+  var candidates = [
+    dayStr0+' '+months_id[mIdx],
+    dayStr1+' '+months_id[mIdx],
+    dayStr0+' '+months_en[mIdx],
+    dayStr1+' '+months_en[mIdx],
+  ];
   for(var i=0; i<WL.length; i++){
-    if(WL[i].trim()===ts) return i;
+    var wlNorm = normDate(WL[i]);
+    for(var c=0; c<candidates.length; c++){
+      if(wlNorm === candidates[c]) return i;
+    }
   }
+  console.log('[DEBUG] getTodayWLIndex: WL=', JSON.stringify(WL.slice(-5)), 'candidates=', candidates);
   return -1;
 }
 
