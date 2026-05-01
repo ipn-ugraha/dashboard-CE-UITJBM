@@ -1246,7 +1246,7 @@ function renderInputForm(){
   var dbgTodayShort = getTodayShort();
   var dbgWLIdx = getTodayWLIndex();
   var dbgWLLast = WL.length>0 ? WL[WL.length-1] : 'kosong';
-  var dbgInfo = 'WL terakhir: "'+dbgWLLast+'" | Hari ini: "'+dbgTodayShort+'" | Index: '+dbgWLIdx;
+  var dbgInfo = 'WL terakhir: "'+dbgWLLast+'" | Hari ini: "'+dbgTodayShort+'" / "'+getTodayFull()+'" | Index: '+dbgWLIdx;
 
   document.getElementById('view-input').innerHTML =
     '<div class="sec-head"><span class="sec-title">Input Data Harian</span><span class="sec-rule"></span>'
@@ -1643,50 +1643,55 @@ function showRekapWAText(tanggal){
   document.getElementById('wa-text-area').value = text;
 }
 
-// Helper: get today's date in short format matching WL ("01 Mei")
+// Helper: get today's date - returns DD Mon and DD Mon YYYY variants
 function getTodayShort(){
   var today = new Date();
   var months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
   return String(today.getDate()).padStart(2,'0')+' '+months[today.getMonth()];
 }
+function getTodayFull(){
+  var today = new Date();
+  var months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+  return String(today.getDate()).padStart(2,'0')+' '+months[today.getMonth()]+' '+today.getFullYear();
+}
 
-// Helper: normalize date string for comparison (trim, lowercase, remove extra spaces)
-function normDate(d){
+// Helper: strip year and normalize WL date for comparison
+function stripYear(d){
   if(!d) return '';
-  // Handle "01 Mei", "1 Mei", "01 Mei 2026" etc
-  var s = String(d).trim().toLowerCase();
-  // Remove year part if present
-  s = s.replace(/\s+\d{4}$/, '');
-  // Normalize leading zero
-  s = s.replace(/^(\d)\s/, '0$1 ');
-  // Normalize month names (case insensitive)
-  return s;
+  // Remove trailing year: "30 Apr 2026" -> "30 Apr"
+  return String(d).trim().replace(/\s+\d{4}\s*$/, '').trim();
 }
 
 // Helper: get today's index in WL array (-1 if not found)
+// WL can have "30 Apr" or "30 Apr 2026" format
 function getTodayWLIndex(){
-  var ts = normDate(getTodayShort());
-  // Also try today without leading zero and common month aliases
   var today = new Date();
-  var months_id = ['jan','feb','mar','apr','mei','jun','jul','agt','sep','okt','nov','des'];
-  var months_en = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+  var months_id = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+  var months_en = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var mIdx = today.getMonth();
   var day = today.getDate();
-  var dayStr0 = String(day).padStart(2,'0');
+  var yr = today.getFullYear();
+  var dayStr = String(day).padStart(2,'0');
   var dayStr1 = String(day);
-  var candidates = [
-    dayStr0+' '+months_id[mIdx],
-    dayStr1+' '+months_id[mIdx],
-    dayStr0+' '+months_en[mIdx],
-    dayStr1+' '+months_en[mIdx],
-  ];
+
+  // Build all possible formats for today
+  var candidates = [];
+  [months_id[mIdx], months_en[mIdx]].forEach(function(mon){
+    candidates.push(dayStr +' '+mon);           // "01 Mei"
+    candidates.push(dayStr1+' '+mon);           // "1 Mei"
+    candidates.push(dayStr +' '+mon+' '+yr);    // "01 Mei 2026"
+    candidates.push(dayStr1+' '+mon+' '+yr);    // "1 Mei 2026"
+    candidates.push(dayStr +' '+mon.toLowerCase());
+    candidates.push(dayStr +' '+mon.toLowerCase()+' '+yr);
+  });
+
   for(var i=0; i<WL.length; i++){
-    var wlNorm = normDate(WL[i]);
+    var wl = String(WL[i]).trim();
+    var wlStrip = stripYear(wl);
     for(var c=0; c<candidates.length; c++){
-      if(wlNorm === candidates[c]) return i;
+      if(wl===candidates[c] || wlStrip===stripYear(candidates[c])) return i;
     }
   }
-  console.log('[DEBUG] getTodayWLIndex: WL=', JSON.stringify(WL.slice(-5)), 'candidates=', candidates);
   return -1;
 }
 
