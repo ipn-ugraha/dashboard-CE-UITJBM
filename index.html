@@ -1476,7 +1476,12 @@ var WA_LETTERS = ['a','b','c','d','e','f','g','h'];
 function generateWAText(upt, tanggal){
   var n = WL.length-1;
   var lines = [];
-  lines.push('*KONDISI COMMON ENEMY UPT '+upt+' '+tanggal+'*');
+  // Format tanggal untuk display
+  var dispTgl = tanggal;
+  var months_disp = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  var p = parseDateRaw(tanggal);
+  if(p) dispTgl = String(p.d).padStart(2,'0')+' '+months_disp[p.m]+' '+p.y;
+  lines.push('*KONDISI COMMON ENEMY UPT '+upt+' '+dispTgl+'*');
   lines.push('target/open/tinjut:');
 
   WA_SECTIONS.forEach(function(sec){
@@ -1499,9 +1504,14 @@ function generateWAText(upt, tanggal){
             j = parseInt(jEl.value);
           } else if(todayIdx>=0&&arr[todayIdx]){
             var jv = arr[todayIdx].j;
-            j = (jv!==undefined&&jv!==null) ? jv : 'blm';
+            j = (jv!==undefined&&jv!==null) ? jv : 0;
+          } else {
+            j = 0;
           }
         }
+      } else {
+        // Sub-item tidak ditrack di dashboard -> tampil 0
+        j = 0;
       }
       lines.push(letter+'. '+item.label+' : '+t+' / '+o+' / '+j);
     });
@@ -1553,7 +1563,11 @@ function copyWAText(){
 
 function generateRekapWAText(tanggal){
   var lines = [];
-  lines.push('*KONDISI COMMON ENEMY PT PLN Persero UIT JBM '+tanggal+'*');
+  var dispTgl2 = tanggal;
+  var months_disp2 = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  var p2 = parseDateRaw(tanggal);
+  if(p2) dispTgl2 = String(p2.d).padStart(2,'0')+' '+months_disp2[p2.m]+' '+p2.y;
+  lines.push('*KONDISI COMMON ENEMY PT PLN Persero UIT JBM '+dispTgl2+'*');
   lines.push('*I. TARGET / OPEN / TINJUT*');
 
   WA_SECTIONS.forEach(function(sec){
@@ -1579,7 +1593,7 @@ function generateRekapWAText(tanggal){
           }
         });
       }
-      var jDisplay = hasAnyJ ? totJ : 'blm';
+      var jDisplay = totJ; // tampil 0 jika tidak ada tinjut
       lines.push(letter+'. '+item.label+' : '+totT+' / '+totO+' / '+jDisplay);
     });
   });
