@@ -1149,9 +1149,14 @@ function renderInputForm(){
           +'</td>'
           +'<td style="padding:7px 6px;text-align:center">'
             +(function(){
-              var jVal = getTodayJ(upt, sk);
-              if(jVal===null) return '<span style="font-family:var(--font-m);font-size:11px;color:var(--text3)">belum</span>';
-              return '<span style="font-family:var(--font-m);font-size:12px;font-weight:600;color:#39d353">'+jVal+'</span>';
+              var todayIdx2 = getTodayIdxForUpt(upt, sk);
+              if(todayIdx2<0) return '<span style="font-family:var(--font-m);font-size:11px;color:var(--text3)">belum</span>';
+              var grpKey2=GROUP_OF[sk];
+              var arr2=D[upt]&&D[upt][grpKey2]?D[upt][grpKey2][sk]:null;
+              if(!arr2||!arr2[todayIdx2]) return '<span style="font-family:var(--font-m);font-size:11px;color:var(--text3)">belum</span>';
+              var jv2=arr2[todayIdx2].j;
+              if(jv2===undefined||jv2===null) return '<span style="font-family:var(--font-m);font-size:11px;color:var(--text3)">belum</span>';
+              return '<span style="font-family:var(--font-m);font-size:12px;font-weight:600;color:#39d353">'+jv2+'</span>';
             })()
           +'</td>'
           +'<td style="padding:7px 6px">'
@@ -1250,7 +1255,9 @@ function renderInputForm(){
   var dbgTodayShort = getTodayShort();
   var dbgWLIdx = getTodayWLIndex();
   var dbgWLLast = WL.length>0 ? WL[WL.length-1] : 'kosong';
-  var dbgInfo = 'WL terakhir: "'+dbgWLLast+'" | Kirim sbg: "'+todayStr+'" | Index: '+dbgWLIdx;
+  var refArr2 = D['MALANG']&&D['MALANG']['G']&&D['MALANG']['G']['G1 AHI Trafo'];
+  var dbgArrLen = refArr2 ? refArr2.length : 0;
+  var dbgInfo = 'WL: '+WL.length+' baris | Data MALANG: '+dbgArrLen+' baris | Index hari ini: '+dbgWLIdx+' | WL terakhir: "'+dbgWLLast+'"';
 
   document.getElementById('view-input').innerHTML =
     '<div class="sec-head"><span class="sec-title">Input Data Harian</span><span class="sec-rule"></span>'
@@ -1464,7 +1471,6 @@ var WA_SECTIONS = [
 var WA_LETTERS = ['a','b','c','d','e','f','g','h'];
 
 function generateWAText(upt, tanggal){
-  var todayIdx = getTodayWLIndex();
   var n = WL.length-1;
   var lines = [];
   lines.push('*KONDISI COMMON ENEMY UPT '+upt+' '+tanggal+'*');
@@ -1481,13 +1487,14 @@ function generateWAText(upt, tanggal){
         var oEl = document.getElementById('inp_o_'+upt+'_'+item.sk.replace(/\s/g,'_'));
         var jEl = document.getElementById('inp_j_'+upt+'_'+item.sk.replace(/\s/g,'_'));
         if(arr&&arr.length>0){
-          var useIdx = todayIdx>=0&&todayIdx<arr.length ? todayIdx : arr.length-1;
+          var todayIdx = getTodayIdxForUpt(upt, item.sk);
+          var useIdx = todayIdx>=0 ? todayIdx : arr.length-1;
           var pt = arr[useIdx]||arr[arr.length-1]||{t:0,o:0,j:0};
           t = pt.t||0;
           o = oEl ? (parseInt(oEl.value)||0) : (pt.o||0);
           if(jEl&&parseInt(jEl.value)>0){
             j = parseInt(jEl.value);
-          } else if(todayIdx>=0&&todayIdx<arr.length&&arr[todayIdx]){
+          } else if(todayIdx>=0&&arr[todayIdx]){
             var jv = arr[todayIdx].j;
             j = (jv!==undefined&&jv!==null) ? jv : 'blm';
           }
@@ -1542,7 +1549,6 @@ function copyWAText(){
 }
 
 function generateRekapWAText(tanggal){
-  var todayIdx = getTodayWLIndex();
   var lines = [];
   lines.push('*KONDISI COMMON ENEMY PT PLN Persero UIT JBM '+tanggal+'*');
   lines.push('*I. TARGET / OPEN / TINJUT*');
@@ -1557,11 +1563,12 @@ function generateRekapWAText(tanggal){
           var grpKey = GROUP_OF[item.sk];
           var arr = D[upt]&&D[upt][grpKey] ? D[upt][grpKey][item.sk] : null;
           if(arr&&arr.length>0){
-            var useIdx = todayIdx>=0&&todayIdx<arr.length ? todayIdx : arr.length-1;
+            var todayIdx = getTodayIdxForUpt(upt, item.sk);
+            var useIdx = todayIdx>=0 ? todayIdx : arr.length-1;
             var pt = arr[useIdx]||arr[arr.length-1]||{t:0,o:0,j:0};
             totT += pt.t||0;
             totO += pt.o||0;
-            var jv = (todayIdx>=0&&todayIdx<arr.length&&arr[todayIdx]) ? arr[todayIdx].j : null;
+            var jv = todayIdx>=0&&arr[todayIdx] ? arr[todayIdx].j : null;
             var jEl = document.getElementById('inp_j_'+upt+'_'+item.sk.replace(/\s/g,'_'));
             var jInput = jEl ? parseInt(jEl.value)||0 : 0;
             if(jInput>0){ totJ+=jInput; hasAnyJ=true; }
@@ -1578,18 +1585,9 @@ function generateRekapWAText(tanggal){
 
 
 function checkAllUPTHaveToday(){
-  var todayIdx = getTodayWLIndex();
   var missing = [];
   UPTS.forEach(function(upt){
-    if(todayIdx < 0){
-      missing.push(upt);
-    } else {
-      var grpData = D[upt]&&D[upt]['G'];
-      var arr = grpData ? grpData['G1 AHI Trafo'] : null;
-      if(!arr || todayIdx>=arr.length || !arr[todayIdx]){
-        missing.push(upt);
-      }
-    }
+    if(!uptHasTodayData(upt)) missing.push(upt);
   });
   return missing;
 }
@@ -1669,40 +1667,51 @@ function stripYear(d){
   return String(d).trim().replace(/\s+\d{4}\s*$/, '').trim();
 }
 
-// Helper: parse any date string to {d,m,y}
-function parseAnyDate(str){
-  if(!str) return null;
-  var s = String(str).trim();
-  var months_id = ['jan','feb','mar','apr','mei','jun','jul','agt','sep','okt','nov','des'];
-  var months_en = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
-
-  // Format DD/MM/YYYY or DD-MM-YYYY
-  var m1 = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
-  if(m1) return {d:parseInt(m1[1]),m:parseInt(m1[2])-1,y:parseInt(m1[3])};
-
-  // Format DD Mon YYYY or DD Mon
-  var m2 = s.match(/^(\d{1,2})\s+([a-zA-Z]+)(?:\s+(\d{4}))?$/);
-  if(m2){
-    var monStr = m2[2].toLowerCase();
-    var mIdx2 = months_id.indexOf(monStr);
-    if(mIdx2<0) mIdx2 = months_en.indexOf(monStr);
-    if(mIdx2>=0) return {d:parseInt(m2[1]),m:mIdx2,y:m2[3]?parseInt(m2[3]):new Date().getFullYear()};
-  }
-  return null;
+// Helper: Cek apakah UPT sudah punya data hari ini
+// Logic: bandingkan panjang array data dengan WL
+// Jika arr.length > WL.length → ada data ekstra (hari ini sudah diinput)
+// Jika arr.length === WL.length → belum ada data hari ini
+// "index hari ini" = arr.length - 1 jika sudah ada data baru
+function getTodayWLIndex(){
+  // Gunakan G1 AHI Trafo MALANG sebagai referensi
+  var refUpt = UPTS[0];
+  var refArr = D[refUpt]&&D[refUpt]['G']&&D[refUpt]['G']['G1 AHI Trafo'];
+  if(!refArr) return -1;
+  if(refArr.length > WL.length) return refArr.length - 1; // ada data baru
+  return -1; // belum ada data hari ini
 }
 
-// Helper: get today's index in WL array (-1 if not found)
-function getTodayWLIndex(){
-  var today = new Date();
-  var td = today.getDate(), tm = today.getMonth(), ty = today.getFullYear();
+// Helper: cek apakah UPT tertentu sudah punya data hari ini
+function uptHasTodayData(upt){
+  var arr = D[upt]&&D[upt]['G']&&D[upt]['G']['G1 AHI Trafo'];
+  if(!arr) return false;
+  var refUpt = UPTS[0];
+  var refArr = D[refUpt]&&D[refUpt]['G']&&D[refUpt]['G']['G1 AHI Trafo'];
+  var maxLen = refArr ? Math.max(arr.length, refArr.length) : arr.length;
+  return arr.length >= maxLen && arr.length > WL.length;
+}
 
-  for(var i=0; i<WL.length; i++){
-    var parsed = parseAnyDate(WL[i]);
-    if(parsed && parsed.d===td && parsed.m===tm &&
-       (parsed.y===ty || !parsed.y)) return i;
-  }
+// Helper: get today's index for a specific UPT
+function getTodayIdxForUpt(upt, sk){
+  var grpKey = GROUP_OF[sk];
+  var arr = D[upt]&&D[upt][grpKey]&&D[upt][grpKey][sk];
+  if(!arr||arr.length===0) return -1;
+  if(arr.length > WL.length) return arr.length - 1;
   return -1;
 }
+
+// Helper: get J value for today for a specific UPT/sk
+function getTodayJ(upt, sk){
+  var idx = getTodayIdxForUpt(upt, sk);
+  if(idx < 0) return null;
+  var grpKey = GROUP_OF[sk];
+  var arr = D[upt]&&D[upt][grpKey]&&D[upt][grpKey][sk];
+  if(!arr||idx>=arr.length) return null;
+  var pt = arr[idx];
+  return (pt&&pt.j!==undefined) ? pt.j : null;
+}
+
+
 
 // Helper: get value at today's WL index for a UPT/sk
 function getTodayJ(upt, sk){
