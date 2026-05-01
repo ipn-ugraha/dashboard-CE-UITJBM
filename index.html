@@ -1373,7 +1373,19 @@ async function submitInputData(upt, tanggal){
     if(s) s.remove();
     delete window._gsCallback;
     if(result && result.status==='ok'){
-      statusEl.innerHTML='<span style="color:#3fb950">✓ Data berhasil dikirim ke Google Sheets! Dashboard akan refresh dalam 1 jam.</span>';
+      statusEl.innerHTML='<span style="color:#3fb950">✓ Data berhasil dikirim! Memuat ulang data...</span>';
+      // Auto refresh data setelah 3 detik (tunggu Apps Script selesai tulis ke sheet)
+      setTimeout(async function(){
+        statusEl.innerHTML='<span style="color:#d29922">⏳ Mengambil data terbaru dari sheet...</span>';
+        var ok = await refreshData();
+        if(ok){
+          statusEl.innerHTML='<span style="color:#3fb950">✓ Data berhasil dikirim dan dimuat! Kolom sudah diperbarui.</span>';
+          // Re-render form untuk update kolom DATA TINJUT HARI INI
+          renderInputForm();
+        } else {
+          statusEl.innerHTML='<span style="color:#d29922">✓ Data terkirim. Refresh halaman jika data belum muncul.</span>';
+        }
+      }, 3000);
     } else {
       statusEl.innerHTML='<span style="color:#f85149">⚠ Error: '+(result&&result.message||'Unknown error')+'</span>';
     }
@@ -1732,6 +1744,50 @@ function getTodayPt(upt, sk){
   var arr = (D[upt]&&D[upt][grpKey]) ? D[upt][grpKey][sk] : null;
   if(!arr||idx>=arr.length) return null;
   return arr[idx] || null;
+}
+
+// Refresh data dari Google Sheets tanpa reload halaman
+async function refreshData(){
+  var uptKeys = ['MALANG','SURABAYA','GRESIK','BALI','MADIUN','PROBOLINGGO'];
+  try{
+    // Fetch semua UPT paralel
+    var fetches = uptKeys.map(function(upt){
+      return fetchCSV(SHEET_CONFIG.GIDS[upt]);
+    });
+    var results = await Promise.all(fetches);
+    var wlRef = null;
+    uptKeys.forEach(function(upt, ui){
+      var text = results[ui];
+      if(!text) return;
+      var rows = parseCSV(text);
+      var parsed = buildDBlock(rows);
+      if(!parsed) return;
+      if(!wlRef) wlRef = parsed.wl;
+      D[upt] = parsed.data;
+    });
+    if(wlRef){
+      WL.length = 0;
+      wlRef.forEach(function(d){ WL.push(d); });
+    }
+    // Fetch CONFIG
+    var cfgText = await fetchCSV(SHEET_CONFIG.GIDS.CONFIG);
+    if(cfgText){
+      var cfgRows = parseCSV(cfgText);
+      var cfgMap = {};
+      cfgRows.slice(1).forEach(function(r){ if(r[0]) cfgMap[r[0]]=r[1]||''; });
+      LAST_UPDATE = cfgMap['LAST_UPDATE'] || LAST_UPDATE;
+      uptKeys.forEach(function(upt){
+        var k = 'TINJUT_'+upt;
+        if(cfgMap[k]!==undefined) TINJUT_TODAY[upt] = parseInt(cfgMap[k])||0;
+      });
+    }
+    // Re-render current view
+    renderAll();
+    return true;
+  }catch(err){
+    console.error('refreshData error:', err);
+    return false;
+  }
 }
 
 function renderAll(){
