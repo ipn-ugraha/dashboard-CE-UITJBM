@@ -1152,6 +1152,19 @@ function renderInputForm(){
           +'</td>'
           +'<td style="padding:7px 6px;text-align:center">'
             +(function(){
+              // Tinjut kemarin = baris sebelum hari ini, atau baris terakhir jika belum ada data hari ini
+              var grpKey3=GROUP_OF[sk];
+              var arr3=D[upt]&&D[upt][grpKey3]?D[upt][grpKey3][sk]:null;
+              if(!arr3||arr3.length===0) return '<span style="font-family:var(--font-m);font-size:11px;color:var(--text3)">—</span>';
+              var todayIdx3=getTodayIdxForUpt(upt,sk);
+              var kemarinIdx=todayIdx3>0 ? todayIdx3-1 : arr3.length-(todayIdx3>=0?2:1);
+              if(kemarinIdx<0) return '<span style="font-family:var(--font-m);font-size:11px;color:var(--text3)">—</span>';
+              var jk=arr3[kemarinIdx]?arr3[kemarinIdx].j:0;
+              return '<span style="font-family:var(--font-m);font-size:12px;color:#58a6ff">'+(jk||0)+'</span>';
+            })()
+          +'</td>'
+          +'<td style="padding:7px 6px;text-align:center">'
+            +(function(){
               var todayIdx2 = getTodayIdxForUpt(upt, sk);
               if(todayIdx2<0) return '<span style="font-family:var(--font-m);font-size:11px;color:var(--text3)">belum</span>';
               var grpKey2=GROUP_OF[sk];
@@ -1184,6 +1197,7 @@ function renderInputForm(){
         +'<th style="padding:7px 6px;text-align:center;font-family:var(--font-m);font-size:9px;color:var(--text3);letter-spacing:0.08em;font-weight:500">TARGET</th>'
         +'<th style="padding:7px 6px;text-align:center;font-family:var(--font-m);font-size:9px;color:#a371f7;letter-spacing:0.08em;font-weight:500">CLOSE (BA)</th>'
         +'<th style="padding:7px 6px;text-align:center;font-family:var(--font-m);font-size:9px;color:var(--text3);letter-spacing:0.08em;font-weight:500">OPEN</th>'
+        +'<th style="padding:7px 6px;text-align:center;font-family:var(--font-m);font-size:9px;color:#58a6ff;letter-spacing:0.08em;font-weight:500">TINJUT KEMARIN</th>'
         +'<th style="padding:7px 6px;text-align:center;font-family:var(--font-m);font-size:9px;color:#39d353;letter-spacing:0.08em;font-weight:500">DATA TINJUT HARI INI</th>'
         +'<th style="padding:7px 6px;text-align:center;font-family:var(--font-m);font-size:9px;color:#ffa502;letter-spacing:0.08em;font-weight:500">INPUT TINJUT HARI INI</th>'
         +'</tr></thead>'
@@ -1257,10 +1271,16 @@ function renderInputForm(){
   document.getElementById('view-input').innerHTML =
     '<div class="sec-head"><span class="sec-title">Input Data Harian</span><span class="sec-rule"></span>'
     +'<span class="sec-meta">'+todayDisp+'</span>'
+    +'<div style="display:flex;gap:8px;margin-left:auto">'
+    +'<button onclick="manualRefreshForm()" id="btn-refresh-form" '
+    +'style="padding:6px 14px;background:rgba(88,166,255,0.12);border:1px solid rgba(88,166,255,0.25);'
+    +'border-radius:6px;color:#58a6ff;font-family:var(--font-m);font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap">'
+    +'🔄 Refresh Data</button>'
     +'<button onclick="showRekapWAText(\''+todayStr+'\')" '
-    +'style="margin-left:auto;padding:6px 14px;background:rgba(212,153,34,0.15);border:1px solid rgba(212,153,34,0.3);'
+    +'style="padding:6px 14px;background:rgba(212,153,34,0.15);border:1px solid rgba(212,153,34,0.3);'
     +'border-radius:6px;color:#d29922;font-family:var(--font-m);font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap">'
     +'📊 Rekap UIT JBM</button>'
+    +'</div>'
     +'</div>'
     + appsScriptSection
     +'<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">'+uptTabs+'</div>'
@@ -1820,6 +1840,19 @@ async function refreshData(){
     return false;
   }
 }
+
+async function manualRefreshForm(){
+  var btn = document.getElementById('btn-refresh-form');
+  if(btn){ btn.textContent='⏳ Memuat...'; btn.style.opacity='0.6'; btn.disabled=true; }
+  await refreshData();
+  renderInputForm();
+  // Restore button after render (it gets recreated)
+  setTimeout(function(){
+    var b = document.getElementById('btn-refresh-form');
+    if(b){ b.textContent='🔄 Refresh Data'; b.style.opacity='1'; b.disabled=false; }
+  }, 300);
+}
+
 
 function renderAll(){
   renderNavTabs();
