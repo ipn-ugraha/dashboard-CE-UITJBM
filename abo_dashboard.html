@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard ABO — UIT JBM</title>
+<meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval'; script-src * 'unsafe-inline' 'unsafe-eval'; connect-src *; style-src * 'unsafe-inline'; font-src *; img-src * data:;">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -214,19 +215,34 @@ function loadData() {
   document.getElementById('error-state').style.display   = 'none';
   document.getElementById('dashboard').style.display     = 'none';
   destroyAll();
+  /* Coba fetch dulu, fallback ke XHR jika gagal */
   var url = SHEET_CSV_URL + '&_=' + Date.now();
-  fetch(url)
-    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
-    .then(function(csv){
-      var parsed = parseCSV(csv);
-      if(!parsed || Object.keys(parsed).length===0) throw new Error('Data kosong atau format tidak dikenal');
-      allData = parsed;
-      renderDashboard();
-      setStatus('ok','Diperbarui: '+new Date().toLocaleTimeString('id-ID'));
-      document.getElementById('footer-info').textContent =
-        'Sumber: Google Sheets · Diperbarui: '+new Date().toLocaleString('id-ID')+' · PT PLN (Persero) UIT JBM';
-    })
-    .catch(function(e){ showError(e.message); });
+  var done = false;
+  function onCSV(csv) {
+    if (done) return; done = true;
+    var parsed = parseCSV(csv);
+    if(!parsed || Object.keys(parsed).length===0) { showError('Data kosong atau format tidak dikenal'); return; }
+    allData = parsed;
+    renderDashboard();
+    setStatus('ok','Diperbarui: '+new Date().toLocaleTimeString('id-ID'));
+    document.getElementById('footer-info').textContent =
+      'Sumber: Google Sheets · Diperbarui: '+new Date().toLocaleString('id-ID')+' · PT PLN (Persero) UIT JBM';
+  }
+  function onError(msg) {
+    if (done) return; done = true;
+    showError(msg);
+  }
+  /* XHR — bekerja di GitHub Pages dengan CSP meta tag di atas */
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', url, true);
+  xhr.onload = function() {
+    if (xhr.status >= 200 && xhr.status < 300) { onCSV(xhr.responseText); }
+    else { onError('HTTP ' + xhr.status); }
+  };
+  xhr.onerror = function() { onError('Tidak dapat terhubung ke Google Sheets. Pastikan sheet sudah di-publish.'); };
+  xhr.ontimeout = function() { onError('Timeout - koneksi terlalu lambat.'); };
+  xhr.timeout = 15000;
+  xhr.send();
 }
 
 function destroyAll() {
