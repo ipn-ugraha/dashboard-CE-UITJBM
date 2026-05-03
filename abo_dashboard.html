@@ -265,8 +265,21 @@ function splitCSVLine(line) {
   return result;
 }
 
+function splitCSVRows(text) {
+  var rows=[], cur='', inq=false;
+  for(var i=0;i<text.length;i++){
+    var ch=text[i];
+    if(ch==='"'){inq=!inq;cur+=ch;}
+    else if(ch==='\r'){/* skip */}
+    else if(ch==='\n'&&!inq){if(cur.trim()) rows.push(cur); cur='';}
+    else{cur+=ch;}
+  }
+  if(cur.trim()) rows.push(cur);
+  return rows;
+}
+
 function parseCSV(csv) {
-  var lines = csv.split('\n').map(function(l){return l.trim();}).filter(function(l){return l.length>0;});
+  var lines = splitCSVRows(csv);
   if(lines.length<3) return null;
 
   /* Cari baris header utama */
