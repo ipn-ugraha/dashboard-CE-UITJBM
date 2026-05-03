@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard ABO — UIT JBM</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #0f1117;
+  --bg2:       #161b27;
+  --surface:   #1e2535;
+  --surface2:  #252d40;
+  --border:    #2e3a52;
+  --border2:   #3a4a68;
+  --text:      #e8edf5;
+  --text2:     #8a97b0;
+  --text3:     #4e5d7a;
+  --accent:    #4a8ef0;
+  --accent-bg: rgba(74,142,240,0.12);
+  --green:     #34c985;
+  --green-bg:  rgba(52,201,133,0.1);
+  --red:       #f0605a;
+  --red-bg:    rgba(240,96,90,0.1);
+  --amber:     #f0a94a;
+  --amber-bg:  rgba(240,169,74,0.1);
+  --purple:    #9b80f0;
+  --purple-bg: rgba(155,128,240,0.1);
+  --radius:    8px;
+  --radius-lg: 12px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;}
+
+/* HEADER */
+.header{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.header-logo{width:34px;height:34px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.header-logo svg{width:18px;height:18px;fill:white;}
+.header-title{display:flex;align-items:center;gap:10px;}
+.header-title h1{font-size:15px;font-weight:600;color:var(--text);letter-spacing:-0.2px;}
+.header-title p{font-size:11px;color:var(--text2);}
+.header-right{display:flex;align-items:center;gap:10px;}
+.refresh-btn{padding:6px 12px;font-size:12px;border:1px solid var(--border2);background:var(--surface);border-radius:var(--radius);cursor:pointer;color:var(--text2);display:flex;align-items:center;gap:6px;font-family:inherit;transition:all .15s;}
+.refresh-btn:hover{background:var(--surface2);color:var(--text);}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0;}
+.status-dot.loading{background:var(--amber);animation:pulse 1s infinite;}
+.status-dot.error{background:var(--red);}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+#status-text{font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace;}
+
+/* MAIN */
+.main{max-width:1200px;margin:0 auto;padding:24px;}
+
+/* STATES */
+#loading-state{text-align:center;padding:80px 24px;}
+#loading-state p{color:var(--text2);font-size:13px;margin-top:14px;}
+.spinner{width:32px;height:32px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto;}
+@keyframes spin{to{transform:rotate(360deg)}}
+#error-state{display:none;text-align:center;padding:60px 24px;}
+#error-state h3{color:var(--red);margin-bottom:8px;font-size:16px;}
+#error-state p{color:var(--text2);font-size:13px;max-width:480px;margin:0 auto 8px;}
+#error-state code{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--surface2);padding:2px 6px;border-radius:4px;color:var(--accent);}
+
+/* NAV */
+.nav{display:flex;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:3px;width:fit-content;margin-bottom:20px;}
+.nav-btn{padding:6px 16px;font-size:13px;border-radius:6px;border:none;background:transparent;color:var(--text2);cursor:pointer;font-family:inherit;font-weight:500;transition:all .15s;}
+.nav-btn.active{background:var(--surface2);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.3);}
+.sub-nav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;}
+.sub-btn{padding:5px 12px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-family:inherit;transition:all .15s;}
+.sub-btn:hover{border-color:var(--border2);color:var(--text);}
+.sub-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+
+.sec{display:none;}
+.sec.visible{display:block;}
+
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px;}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;}
+.kpi-card .kpi-label{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;}
+.kpi-card .kpi-value{font-size:28px;font-weight:600;line-height:1;}
+.kpi-card .kpi-sub{font-size:11px;color:var(--text3);margin-top:4px;}
+.kpi-card.green{background:var(--green-bg);border-color:rgba(52,201,133,.25);}
+.kpi-card.green .kpi-value{color:var(--green);}
+.kpi-card.red{background:var(--red-bg);border-color:rgba(240,96,90,.25);}
+.kpi-card.red .kpi-value{color:var(--red);}
+
+/* OVERVIEW */
+.overview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+.ov-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;}
+.ov-card h3{font-size:13px;font-weight:600;color:var(--text);margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+.bidang-tag{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:500;letter-spacing:.3px;}
+.bidang-tag.gi{background:var(--accent-bg);color:var(--accent);}
+.bidang-tag.pr{background:var(--purple-bg);color:var(--purple);}
+.bidang-tag.tr{background:var(--green-bg);color:var(--green);}
+.prog-item{margin-bottom:11px;}
+.prog-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;}
+.prog-name{font-size:12px;color:var(--text2);}
+.prog-pct{font-size:12px;font-weight:600;}
+.prog-pct.ok{color:var(--green);}
+.prog-pct.bad{color:var(--red);}
+.bar-track{background:var(--surface2);border-radius:4px;height:5px;overflow:hidden;}
+.bar-fill{height:5px;border-radius:4px;transition:width .6s ease;}
+.bar-fill.ok{background:var(--green);}
+.bar-fill.bad{background:var(--red);}
+
+/* CHART CARD */
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-bottom:14px;}
+.chart-card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:12px;}
+.chart-card-header h4{font-size:13px;font-weight:600;color:var(--text);}
+.badge{font-size:11px;padding:3px 8px;border-radius:var(--radius);font-weight:500;white-space:nowrap;flex-shrink:0;}
+.badge.ok{background:var(--green-bg);color:var(--green);}
+.badge.bad{background:var(--red-bg);color:var(--red);}
+.chart-kpi{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+.ckpi{background:var(--surface2);border-radius:6px;padding:5px 10px;font-size:11px;border:1px solid var(--border);}
+.ckpi span{color:var(--text3);}
+.ckpi strong{color:var(--text);margin-left:3px;}
+.chart-wrap{position:relative;width:100%;}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;font-size:11px;color:var(--text2);}
+.legend-item{display:flex;align-items:center;gap:5px;}
+.legend-box{width:10px;height:10px;border-radius:2px;display:inline-block;flex-shrink:0;}
+.legend-line{width:20px;height:0;display:inline-block;flex-shrink:0;}
+
+/* FOOTER */
+.footer{text-align:center;padding:20px;color:var(--text3);font-size:11px;font-family:'IBM Plex Mono',monospace;border-top:1px solid var(--border);margin-top:20px;}
+
+@media(max-width:600px){
+  .main{padding:14px;}
+  .header{padding:10px 14px;}
+  .kpi-card .kpi-value{font-size:22px;}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-title">
+    <div class="header-logo">
+      <svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+    </div>
+    <div>
+      <h1>Dashboard ABO — UIT JBM</h1>
+      <p>Breakthrough Initiative / Lines of Defense · 2026</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="status-dot loading" id="status-dot"></span>
+    <span id="status-text">Memuat data...</span>
+    <button class="refresh-btn" onclick="loadData()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      Refresh
+    </button>
+  </div>
+</div>
+
+<div class="main">
+  <div id="loading-state">
+    <div class="spinner"></div>
+    <p>Mengambil data dari Google Sheets...</p>
+  </div>
+  <div id="error-state">
+    <h3>Gagal memuat data</h3>
+    <p id="error-msg">Pastikan Google Sheet sudah di-publish ke web dan URL CSV sudah benar.</p>
+  </div>
+
+  <div id="dashboard" style="display:none;">
+    <div class="nav">
+      <button class="nav-btn active" onclick="showSec('overview')">Overview</button>
+      <button class="nav-btn" onclick="showSec('bulanan')">Bulanan</button>
+      <button class="nav-btn" onclick="showSec('kumulatif')">Kumulatif</button>
+    </div>
+
+    <div id="sec-overview" class="sec visible">
+      <div class="kpi-grid" id="kpi-grid"></div>
+      <div class="overview-grid" id="overview-grid"></div>
+    </div>
+
+    <div id="sec-bulanan" class="sec">
+      <div class="sub-nav" id="bul-sub"></div>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-box" style="background:rgba(74,142,240,0.25);border:1px dashed #4a8ef0;"></span>Target</div>
+        <div class="legend-item"><span class="legend-box" style="background:#34c985;"></span>Realisasi tercapai</div>
+        <div class="legend-item"><span class="legend-box" style="background:rgba(240,96,90,0.75);"></span>Realisasi kurang</div>
+      </div>
+      <div id="bul-charts"></div>
+    </div>
+
+    <div id="sec-kumulatif" class="sec">
+      <div class="sub-nav" id="kum-sub"></div>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-line" style="border-top:2px dashed #4a8ef0;"></span>Target kumulatif</div>
+        <div class="legend-item"><span class="legend-line" style="border-top:2px solid #34c985;"></span>Realisasi kumulatif</div>
+      </div>
+      <div id="kum-charts"></div>
+    </div>
+  </div>
+</div>
+
+<div class="footer" id="footer-info">PT PLN (Persero) UIT JBM</div>
+
+<script>
+var SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQAZvXsLckKUbS8wEfYu1_Ab0BbT3byn8690EVc_MjpPyUUGJFwMZErZHObFKncZHXMVjeAreOWDo4P/pub?gid=2021607239&single=true&output=csv';
+
+var MONTHS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
+var allData = {};
+var bulTab = '', kumTab = '';
+var bulCharts = [], kumCharts = [];
+
+/* ── LOAD ── */
+function loadData() {
+  setStatus('loading','Memuat data...');
+  document.getElementById('loading-state').style.display = 'block';
+  document.getElementById('error-state').style.display   = 'none';
+  document.getElementById('dashboard').style.display     = 'none';
+  destroyAll();
+  var url = SHEET_CSV_URL + '&_=' + Date.now();
+  fetch(url)
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
+    .then(function(csv){
+      var parsed = parseCSV(csv);
+      if(!parsed || Object.keys(parsed).length===0) throw new Error('Data kosong atau format tidak dikenal');
+      allData = parsed;
+      renderDashboard();
+      setStatus('ok','Diperbarui: '+new Date().toLocaleTimeString('id-ID'));
+      document.getElementById('footer-info').textContent =
+        'Sumber: Google Sheets · Diperbarui: '+new Date().toLocaleString('id-ID')+' · PT PLN (Persero) UIT JBM';
+    })
+    .catch(function(e){ showError(e.message); });
+}
+
+function destroyAll() {
+  bulCharts.forEach(function(c){c.destroy();}); bulCharts=[];
+  kumCharts.forEach(function(c){c.destroy();}); kumCharts=[];
+  var ids = ['bul-charts','kum-charts','overview-grid','kpi-grid','bul-sub','kum-sub'];
+  ids.forEach(function(id){ var el=document.getElementById(id); if(el) el.innerHTML=''; });
+}
+
+/* ── PARSE CSV ── */
+function splitCSVLine(line) {
+  var result=[], cur='', inq=false;
+  for(var i=0;i<line.length;i++){
+    var ch=line[i];
+    if(ch==='"'){inq=!inq;}
+    else if(ch===','&&!inq){result.push(cur.trim());cur='';}
+    else{cur+=ch;}
+  }
+  result.push(cur.trim());
+  return result;
+}
+
+function parseCSV(csv) {
+  var lines = csv.split('\n').map(function(l){return l.trim();}).filter(function(l){return l.length>0;});
+  if(lines.length<3) return null;
+
+  /* Cari baris header utama */
+  var h1Idx=-1;
+  for(var i=0;i<Math.min(6,lines.length);i++){
+    var lo=lines[i].toLowerCase();
+    if(lo.indexOf('january')>-1||lo.indexOf('breakthrough')>-1){h1Idx=i;break;}
+  }
+  if(h1Idx<0) return null;
+
+  /* Cari baris sub-header Target/Realisasi */
+  var h2Idx=-1;
+  for(var j=h1Idx+1;j<Math.min(h1Idx+3,lines.length);j++){
+    var lo2=lines[j].toLowerCase();
+    var tCount=(lo2.match(/target/g)||[]).length;
+    var rCount=(lo2.match(/realisasi/g)||[]).length;
+    if(tCount>=3&&rCount>=3){h2Idx=j;break;}
+  }
+
+  var h1=splitCSVLine(lines[h1Idx]);
+  var h2=h2Idx>-1?splitCSVLine(lines[h2Idx]):null;
+
+  /* Index kolom metadata */
+  var idxNo=findCol(h1,['no']);
+  var idxInit=findCol(h1,['breakthrough','initiative','lines of defense']);
+  var idxType=findCol(h1,['ts/mi','tipe','type']);
+  var idxBidang=findCol(h1,['bidang']);
+  var idxTgtThn=findCol(h1,['target']);
+  var idxSatuan=findCol(h1,['satuan','unit']);
+  if(idxNo<0)idxNo=1;
+  if(idxInit<0)idxInit=2;
+  if(idxType<0)idxType=3;
+  if(idxBidang<0)idxBidang=4;
+  if(idxTgtThn<0)idxTgtThn=5;
+  if(idxSatuan<0)idxSatuan=6;
+
+  /* Posisi awal kolom bulan: cari 'Target' pertama di h2 */
+  var firstCol=-1;
+  if(h2){
+    for(var c=0;c<h2.length;c++){
+      if(h2[c].trim().toLowerCase()==='target'){firstCol=c;break;}
+    }
+  }
+  /* Fallback: cari nama bulan di h1 */
+  if(firstCol<0){
+    var mNames=['january','february','march','april','may','june','july','august','september','october','november','december'];
+    for(var c2=0;c2<h1.length;c2++){
+      if(mNames.indexOf(h1[c2].trim().toLowerCase())>-1){firstCol=c2;break;}
+    }
+  }
+  if(firstCol<0) firstCol=7;
+
+  /* Pasangan kolom bulan */
+  var monthCols=[];
+  for(var m=0;m<12;m++){
+    monthCols.push({t:firstCol+m*2, r:firstCol+m*2+1});
+  }
+
+  var dataStart=h2Idx>-1?h2Idx+1:h1Idx+1;
+  var result={};
+
+  for(var row=dataStart;row<lines.length;row++){
+    var cells=splitCSVLine(lines[row]);
+    if(!cells||cells.length<idxBidang+1) continue;
+    var noVal=cells[idxNo]?cells[idxNo].trim():'';
+    if(!noVal||isNaN(parseFloat(noVal))) continue;
+    var bidang=cells[idxBidang]?cells[idxBidang].trim().toUpperCase():'';
+    if(!bidang) continue;
+
+    var tgt=[],rel=[];
+    for(var m2=0;m2<12;m2++){
+      tgt.push(numVal(cells[monthCols[m2].t]));
+      rel.push(numVal(cells[monthCols[m2].r]));
+    }
+    if(!result[bidang]) result[bidang]=[];
+    result[bidang].push({
+      label: noVal+'. '+truncate((cells[idxInit]||'').replace(/\n/g,' '),58),
+      labelFull: cells[idxInit]||'',
+      type: cells[idxType]?cells[idxType].trim():'',
+      targetTahunan: numVal(cells[idxTgtThn]),
+      satuan: cells[idxSatuan]?cells[idxSatuan].trim().replace(/\n/g,' '):'',
+      tgt: tgt, rel: rel
+    });
+  }
+  return Object.keys(result).length>0?result:null;
+}
+
+function findCol(headers,keywords){
+  for(var i=0;i<headers.length;i++){
+    var h=headers[i].toLowerCase();
+    for(var k=0;k<keywords.length;k++){
+      if(h.indexOf(keywords[k])>-1) return i;
+    }
+  }
+  return -1;
+}
+function numVal(v){
+  if(!v||v.toString().trim()===''||v.toString().trim()==='-') return 0;
+  var n=parseFloat(v.toString().replace(/[^0-9.\-]/g,''));
+  return isNaN(n)?0:n;
+}
+function truncate(s,n){return s.length>n?s.substring(0,n)+'…':s;}
+function cumSum(a){var s=0;return a.map(function(v){s+=v;return s;});}
+function ytd(arr,upto){
+  upto=upto===undefined?4:upto;
+  return arr.slice(0,upto).reduce(function(a,v){return a+v;},0);
+}
+
+/* ── RENDER ── */
+function renderDashboard() {
+  var bidangs=Object.keys(allData);
+  if(bidangs.length===0) return;
+  bulTab=bidangs[0]; kumTab=bidangs[0];
+
+  var allItems=[];
+  bidangs.forEach(function(b){allData[b].forEach(function(i){allItems.push(i);});});
+  var total=allItems.length;
+  var onTrack=allItems.filter(function(i){return ytd(i.rel)>=ytd(i.tgt);}).length;
+  var avgPct=total>0?Math.round(allItems.reduce(function(acc,i){
+    var t=ytd(i.tgt),r=ytd(i.rel);
+    return acc+(t>0?r/t*100:(r>0?100:0));
+  },0)/total):0;
+
+  /* KPI */
+  document.getElementById('kpi-grid').innerHTML=
+    kpiCardHTML('Total program',total,'','') +
+    kpiCardHTML('On track (s/d Apr)',onTrack,'green','dari '+total+' program') +
+    kpiCardHTML('Di bawah target',total-onTrack,total-onTrack>0?'red':'green','perlu perhatian') +
+    kpiCardHTML('Rata-rata capaian',avgPct+'%',avgPct>=100?'green':'red','kumulatif s/d April');
+
+  /* Overview cards */
+  var ovGrid=document.getElementById('overview-grid');
+  bidangs.forEach(function(b){
+    var tagCls=b==='GARDU INDUK'?'gi':b==='PROTEKSI'?'pr':'tr';
+    var card=document.createElement('div');
+    card.className='ov-card';
+    var html='<h3>'+b.charAt(0)+b.slice(1).toLowerCase()+
+      ' <span class="bidang-tag '+tagCls+'">'+b+'</span></h3>';
+    allData[b].forEach(function(item){
+      var t=ytd(item.tgt),r=ytd(item.rel);
+      var pct=t>0?Math.round(r/t*100):(r>0?100:0);
+      var ok=r>=t;
+      html+='<div class="prog-item">'+
+        '<div class="prog-header">'+
+        '<span class="prog-name">'+item.label+'</span>'+
+        '<span class="prog-pct '+(ok?'ok':'bad')+'">'+pct+'%</span>'+
+        '</div>'+
+        '<div class="bar-track"><div class="bar-fill '+(ok?'ok':'bad')+'" style="width:'+Math.min(pct,100)+'%;"></div></div>'+
+        '</div>';
+    });
+    card.innerHTML=html;
+    ovGrid.appendChild(card);
+  });
+
+  /* Sub navs */
+  buildSubNav('bul-sub',bidangs,function(b){setBulTab(b);},bulTab);
+  buildSubNav('kum-sub',bidangs,function(b){setKumTab(b);},kumTab);
+
+  document.getElementById('loading-state').style.display='none';
+  document.getElementById('dashboard').style.display='block';
+}
+
+function kpiCardHTML(label,value,cls,sub){
+  return '<div class="kpi-card '+(cls||'')+'">'+
+    '<div class="kpi-label">'+label+'</div>'+
+    '<div class="kpi-value">'+value+'</div>'+
+    (sub?'<div class="kpi-sub">'+sub+'</div>':'')+
+    '</div>';
+}
+
+function buildSubNav(id,bidangs,cb,active){
+  var el=document.getElementById(id);
+  el.innerHTML='';
+  bidangs.forEach(function(b){
+    var btn=document.createElement('button');
+    btn.className='sub-btn'+(b===active?' active':'');
+    btn.textContent=b.charAt(0)+b.slice(1).toLowerCase();
+    btn.onclick=function(){
+      el.querySelectorAll('.sub-btn').forEach(function(x){x.classList.remove('active');});
+      btn.classList.add('active');
+      cb(b);
+    };
+    el.appendChild(btn);
+  });
+}
+
+/* ── SECTION SWITCH ── */
+function showSec(id){
+  document.querySelectorAll('.sec').forEach(function(s){s.classList.remove('visible');});
+  document.getElementById('sec-'+id).classList.add('visible');
+  document.querySelectorAll('.nav-btn').forEach(function(b){
+    var map={overview:'Overview',bulanan:'Bulanan',kumulatif:'Kumulatif'};
+    b.classList.toggle('active',b.textContent===map[id]);
+  });
+  if(id==='bulanan'){
+    bulCharts.forEach(function(c){c.destroy();}); bulCharts=[];
+    document.getElementById('bul-charts').innerHTML='';
+    buildBulanan(bulTab);
+  }
+  if(id==='kumulatif'){
+    kumCharts.forEach(function(c){c.destroy();}); kumCharts=[];
+    document.getElementById('kum-charts').innerHTML='';
+    buildKumulatif(kumTab);
+  }
+}
+
+/* ── BULANAN ── */
+function setBulTab(tab){
+  bulTab=tab;
+  bulCharts.forEach(function(c){c.destroy();}); bulCharts=[];
+  document.getElementById('bul-charts').innerHTML='';
+  buildBulanan(tab);
+}
+
+function buildBulanan(bidang){
+  var container=document.getElementById('bul-charts');
+  container.innerHTML='';
+  if(!allData[bidang]) return;
+  allData[bidang].forEach(function(item,idx){
+    var t=ytd(item.tgt),r=ytd(item.rel);
+    var pct=t>0?Math.round(r/t*100):(r>0?100:0);
+    var ok=r>=t;
+    var barColors=item.rel.map(function(rv,i){
+      if(rv===0&&item.tgt[i]===0) return '#34c985';
+      return rv>=item.tgt[i]?'#34c985':'rgba(240,96,90,0.8)';
+    });
+    var maxVal=Math.max.apply(null,item.tgt.concat(item.rel).concat([1]));
+    var cid='bc_'+bidang.replace(/\W/g,'_')+'_'+idx;
+    var card=makeCard(item,pct,ok,t,r,cid,165);
+    container.appendChild(card);
+    requestAnimationFrame(function(){
+      var ch=new Chart(document.getElementById(cid),{
+        type:'bar',
+        data:{labels:MONTHS,datasets:[
+          {label:'Target',data:item.tgt,type:'line',borderColor:'#4a8ef0',borderWidth:1.5,borderDash:[4,3],pointRadius:2,pointBackgroundColor:'#4a8ef0',fill:false,tension:0,order:0},
+          {label:'Realisasi',data:item.rel,type:'bar',backgroundColor:barColors,borderWidth:0,order:1}
+        ]},
+        options:chartOpts(maxVal,item.satuan,false)
+      });
+      bulCharts.push(ch);
+    });
+  });
+}
+
+/* ── KUMULATIF ── */
+function setKumTab(tab){
+  kumTab=tab;
+  kumCharts.forEach(function(c){c.destroy();}); kumCharts=[];
+  document.getElementById('kum-charts').innerHTML='';
+  buildKumulatif(tab);
+}
+
+function buildKumulatif(bidang){
+  var container=document.getElementById('kum-charts');
+  container.innerHTML='';
+  if(!allData[bidang]) return;
+  allData[bidang].forEach(function(item,idx){
+    var cumT=cumSum(item.tgt),cumR=cumSum(item.rel);
+    var t=ytd(item.tgt),r=ytd(item.rel);
+    var pct=t>0?Math.round(r/t*100):(r>0?100:0);
+    var ok=r>=t;
+    var maxVal=Math.max.apply(null,cumT.concat(cumR).concat([1]));
+    var cid='kc_'+bidang.replace(/\W/g,'_')+'_'+idx;
+    var card=makeCard(item,pct,ok,t,r,cid,190);
+    container.appendChild(card);
+    requestAnimationFrame(function(){
+      var ch=new Chart(document.getElementById(cid),{
+        type:'line',
+        data:{labels:MONTHS,datasets:[
+          {label:'Target kumulatif',data:cumT,borderColor:'#4a8ef0',borderWidth:2,borderDash:[5,4],pointRadius:3,pointBackgroundColor:'#4a8ef0',fill:false,tension:0.35},
+          {label:'Realisasi kumulatif',data:cumR,borderColor:'#34c985',borderWidth:2,pointRadius:3,pointBackgroundColor:'#34c985',fill:{target:0,above:'rgba(52,201,133,0.07)',below:'rgba(240,96,90,0.07)'},tension:0.35}
+        ]},
+        options:chartOpts(maxVal,item.satuan,true)
+      });
+      kumCharts.push(ch);
+    });
+  });
+}
+
+/* ── HELPERS ── */
+function makeCard(item,pct,ok,t,r,cid,h){
+  var el=document.createElement('div');
+  el.className='chart-card';
+  el.innerHTML=
+    '<div class="chart-card-header">'+
+      '<h4>'+item.label+'</h4>'+
+      '<span class="badge '+(ok?'ok':'bad')+'">'+pct+'% '+(ok?'on track':'kurang')+'</span>'+
+    '</div>'+
+    '<div class="chart-kpi">'+
+      '<div class="ckpi"><span>Target YTD</span><strong>'+t.toLocaleString('id-ID')+'</strong></div>'+
+      '<div class="ckpi"><span>Realisasi</span><strong>'+r.toLocaleString('id-ID')+'</strong></div>'+
+      '<div class="ckpi"><span>Satuan</span><strong>'+item.satuan+'</strong></div>'+
+      '<div class="ckpi"><span>Target Tahunan</span><strong>'+item.targetTahunan.toLocaleString('id-ID')+'</strong></div>'+
+    '</div>'+
+    '<div class="chart-wrap" style="height:'+h+'px;">'+
+      '<canvas id="'+cid+'" role="img" aria-label="Grafik '+item.label+'">'+item.label+'</canvas>'+
+    '</div>';
+  return el;
+}
+
+function chartOpts(maxVal,satuan,isLine){
+  return {
+    responsive:true,maintainAspectRatio:false,
+    plugins:{
+      legend:{display:false},
+      tooltip:{callbacks:{label:function(ctx){return ctx.dataset.label+': '+ctx.parsed.y.toLocaleString('id-ID')+' '+satuan;}}}
+    },
+    scales:{
+      x:{ticks:{font:{size:11,family:'IBM Plex Sans'},autoSkip:false,maxRotation:0,color:'#4e5d7a'},grid:{color:'rgba(46,58,82,0.5)',display:isLine}},
+      y:{beginAtZero:true,max:Math.ceil(maxVal*1.18),ticks:{font:{size:11,family:'IBM Plex Sans'},color:'#4e5d7a',callback:function(v){return v.toLocaleString('id-ID');}},grid:{color:'rgba(46,58,82,0.5)'}}
+    }
+  };
+}
+
+function setStatus(state,msg){
+  var dot=document.getElementById('status-dot');
+  dot.className='status-dot '+(state==='loading'?'loading':state==='error'?'error':'');
+  document.getElementById('status-text').textContent=msg;
+}
+function showError(msg){
+  document.getElementById('loading-state').style.display='none';
+  document.getElementById('error-state').style.display='block';
+  document.getElementById('error-msg').textContent='Gagal memuat: '+msg;
+  setStatus('error','Gagal memuat');
+}
+
+loadData();
+</script>
+</body>
+</html>
