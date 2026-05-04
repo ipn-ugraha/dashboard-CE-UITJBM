@@ -60,7 +60,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .header h1 span { color: var(--gold); }
 .header p { font-size: 15px; color: var(--text2); font-weight: 300; }
 
-.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; width: 100%; max-width: 780px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; width: 100%; max-width: 1100px; }
 
 .card {
   position: relative; background: var(--surface); border: 1px solid var(--border);
@@ -72,25 +72,30 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .card::before { content:''; position:absolute; inset:0; border-radius:20px; opacity:0; transition:opacity .3s ease; }
 .card-abo::before { background: radial-gradient(ellipse at 0% 0%, rgba(58,142,240,0.1) 0%, transparent 60%); }
 .card-ce::before  { background: radial-gradient(ellipse at 0% 0%, rgba(245,200,66,0.08) 0%, transparent 60%); }
+.card-ahi::before { background: radial-gradient(ellipse at 0% 0%, rgba(46,217,122,0.08) 0%, transparent 60%); }
 .card:hover { transform: translateY(-4px); border-color: var(--border-hover); box-shadow: 0 24px 60px rgba(0,0,0,.4); }
 .card:hover::before { opacity: 1; }
 
 .card-accent { position:absolute; top:0; left:32px; width:40px; height:3px; border-radius:0 0 4px 4px; }
 .card-abo .card-accent { background: var(--blue); }
 .card-ce .card-accent  { background: var(--gold); }
+.card-ahi .card-accent { background: #2ed87a; }
 
 .card-icon { width:48px; height:48px; border-radius:14px; display:flex; align-items:center; justify-content:center; margin-bottom:24px; }
 .card-abo .card-icon { background:rgba(58,142,240,.12); border:1px solid rgba(58,142,240,.2); }
 .card-ce .card-icon  { background:rgba(245,200,66,.10); border:1px solid rgba(245,200,66,.2); }
+.card-ahi .card-icon { background:rgba(46,217,122,.10); border:1px solid rgba(46,217,122,.2); }
 .card-icon svg { width:22px; height:22px; }
 .card-abo .card-icon svg { stroke: var(--blue); }
 .card-ce .card-icon svg  { stroke: var(--gold); }
+.card-ahi .card-icon svg { stroke: #2ed87a; }
 
 .card-num { position:absolute; top:28px; right:28px; font-family:'Syne',sans-serif; font-size:48px; font-weight:800; line-height:1; opacity:.04; pointer-events:none; }
 
 .card-tag { display:inline-block; font-size:10px; font-family:'Syne',sans-serif; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; padding:3px 9px; border-radius:100px; margin-bottom:10px; }
 .card-abo .card-tag { background:rgba(58,142,240,.12); color:#7ab8f8; border:1px solid rgba(58,142,240,.2); }
 .card-ce .card-tag  { background:rgba(245,200,66,.10); color:#f5c842; border:1px solid rgba(245,200,66,.2); }
+.card-ahi .card-tag { background:rgba(46,217,122,.10); color:#2ed87a; border:1px solid rgba(46,217,122,.2); }
 
 .card h2 { font-family:'Syne',sans-serif; font-size:20px; font-weight:700; margin-bottom:6px; letter-spacing:-.3px; line-height:1.2; }
 .card p  { font-size:13px; color:var(--text2); line-height:1.5; margin-bottom:28px; font-weight:300; }
@@ -98,6 +103,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .card-arrow { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:500; transition:gap .2s ease; }
 .card-abo .card-arrow { color: var(--blue); }
 .card-ce .card-arrow  { color: var(--gold); }
+.card-ahi .card-arrow { color: #2ed87a; }
 .card:hover .card-arrow { gap: 10px; }
 .card-arrow svg { width:14px; height:14px; transition:transform .2s ease; }
 .card:hover .card-arrow svg { transform: translateX(2px); }
@@ -149,7 +155,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 #frame-loader p { font-size:12px; color:#4a5a7a; }
 
 @media(max-width:520px){
-  .cards{grid-template-columns:1fr;max-width:400px;}
+  .cards{grid-template-columns:1fr;max-width:420px;}
   .card{padding:28px 24px;}
   .header{margin-bottom:36px;}
 }
@@ -203,6 +209,23 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </div>
       </div>
+
+      <div class="card card-ahi" onclick="openDash('https://ipn-ugraha.github.io/AHIMTUX/','Monitoring AHI MTU','ahi')">
+        <div class="card-accent"></div>
+        <div class="card-num">03</div>
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+          </svg>
+        </div>
+        <span class="card-tag">Monitoring · AHI MTU</span>
+        <h2>Monitoring<br>AHI MTU</h2>
+        <p>Monitoring kondisi dan status AHI MTU · Pantau data real-time per unit</p>
+        <div class="card-arrow">
+          Buka Dashboard
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+      </div>
     </div>
 
     <div class="footer">
@@ -239,8 +262,11 @@ var titleEl   = document.getElementById('frame-title');
 var tagEl     = document.getElementById('frame-tag');
 
 function openDash(url, title, type) {
+  /* External URLs: open in new tab to avoid X-Frame-Options block */
+  var isExternal = url.indexOf('http') === 0 && url.indexOf(window.location.hostname) < 0;
+  if (isExternal) { window.open(url, '_blank'); return; }
   titleEl.textContent = title;
-  tagEl.textContent   = type === 'abo' ? 'ABO' : 'Common Enemy';
+  tagEl.textContent   = type === 'abo' ? 'ABO' : (type === 'ce' ? 'Common Enemy' : 'AHI MTU');
   tagEl.className     = 'frame-tag ' + type;
   loader.classList.remove('hidden');
   frameWrap.classList.add('visible');
