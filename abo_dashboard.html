@@ -422,12 +422,31 @@ function renderDashboard() {
       var t=ytd(item.tgt),r=ytd(item.rel);
       var pct=t>0?Math.round(r/t*100):(r>0?100:0);
       var ok=r>=t;
+      /* persen terhadap target tahunan */
+      var tThn=item.targetTahunan;
+      var relTotal=item.rel.reduce(function(a,v){return a+v;},0);
+      var pctThn=tThn>0?Math.round(relTotal/tThn*100):0;
       html+='<div class="prog-item">'+
         '<div class="prog-header">'+
         '<span class="prog-name">'+item.label+'</span>'+
-        '<span class="prog-pct '+(ok?'ok':'bad')+'">'+pct+'%</span>'+
+        '<div style="display:flex;align-items:center;gap:8px;">'+
+          '<span style="font-size:10px;color:var(--text3);" title="Realisasi terhadap target tahunan">'+pctThn+'% <span style="font-weight:400;opacity:0.6;">/thn</span></span>'+
+          '<span class="prog-pct '+(ok?'ok':'bad')+'" title="Realisasi terhadap target YTD">'+pct+'%</span>'+
         '</div>'+
-        '<div class="bar-track"><div class="bar-fill '+(ok?'ok':'bad')+'" style="width:'+Math.min(pct,100)+'%;"></div></div>'+
+        '</div>'+
+        '<div style="display:flex;gap:4px;margin-bottom:4px;">'+
+          '<div style="flex:1;">'+
+            '<div style="font-size:9px;color:var(--text3);margin-bottom:2px;">s/d Apr</div>'+
+            '<div class="bar-track"><div class="bar-fill '+(ok?'ok':'bad')+'" style="width:'+Math.min(pct,100)+'%;"></div></div>'+
+          '</div>'+
+          '<div style="flex:1;">'+
+            '<div style="font-size:9px;color:var(--text3);margin-bottom:2px;">vs Target Thn</div>'+
+            '<div class="bar-track"><div class="bar-fill" style="width:'+Math.min(pctThn,100)+'%;background:var(--amber);"></div></div>'+
+          '</div>'+
+        '</div>'+
+        '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);">'+
+          '<span>Real: '+relTotal.toLocaleString('id-ID')+' / Tgt Thn: '+tThn.toLocaleString('id-ID')+' '+item.satuan+'</span>'+
+        '</div>'+
         '</div>';
     });
     card.innerHTML=html;
