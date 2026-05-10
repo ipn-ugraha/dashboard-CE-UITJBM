@@ -60,7 +60,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .header h1 span { color: var(--gold); }
 .header p { font-size: 15px; color: var(--text2); font-weight: 300; }
 
-.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; width: 100%; max-width: 1100px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; width: 100%; max-width: 1200px; }
 
 .card {
   position: relative; background: var(--surface); border: 1px solid var(--border);
@@ -73,6 +73,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .card-abo::before { background: radial-gradient(ellipse at 0% 0%, rgba(58,142,240,0.1) 0%, transparent 60%); }
 .card-ce::before  { background: radial-gradient(ellipse at 0% 0%, rgba(245,200,66,0.08) 0%, transparent 60%); }
 .card-ahi::before { background: radial-gradient(ellipse at 0% 0%, rgba(46,217,122,0.08) 0%, transparent 60%); }
+.card-tower::before { background: radial-gradient(ellipse at 0% 0%, rgba(168,108,255,0.08) 0%, transparent 60%); }
 .card:hover { transform: translateY(-4px); border-color: var(--border-hover); box-shadow: 0 24px 60px rgba(0,0,0,.4); }
 .card:hover::before { opacity: 1; }
 
@@ -80,15 +81,18 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .card-abo .card-accent { background: var(--blue); }
 .card-ce .card-accent  { background: var(--gold); }
 .card-ahi .card-accent { background: #2ed87a; }
+.card-tower .card-accent { background: #a86cff; }
 
 .card-icon { width:48px; height:48px; border-radius:14px; display:flex; align-items:center; justify-content:center; margin-bottom:24px; }
 .card-abo .card-icon { background:rgba(58,142,240,.12); border:1px solid rgba(58,142,240,.2); }
 .card-ce .card-icon  { background:rgba(245,200,66,.10); border:1px solid rgba(245,200,66,.2); }
 .card-ahi .card-icon { background:rgba(46,217,122,.10); border:1px solid rgba(46,217,122,.2); }
+.card-tower .card-icon { background:rgba(168,108,255,.10); border:1px solid rgba(168,108,255,.2); }
 .card-icon svg { width:22px; height:22px; }
 .card-abo .card-icon svg { stroke: var(--blue); }
 .card-ce .card-icon svg  { stroke: var(--gold); }
 .card-ahi .card-icon svg { stroke: #2ed87a; }
+.card-tower .card-icon svg { stroke: #a86cff; }
 
 .card-num { position:absolute; top:28px; right:28px; font-family:'Syne',sans-serif; font-size:48px; font-weight:800; line-height:1; opacity:.04; pointer-events:none; }
 
@@ -96,6 +100,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .card-abo .card-tag { background:rgba(58,142,240,.12); color:#7ab8f8; border:1px solid rgba(58,142,240,.2); }
 .card-ce .card-tag  { background:rgba(245,200,66,.10); color:#f5c842; border:1px solid rgba(245,200,66,.2); }
 .card-ahi .card-tag { background:rgba(46,217,122,.10); color:#2ed87a; border:1px solid rgba(46,217,122,.2); }
+.card-tower .card-tag { background:rgba(168,108,255,.10); color:#a86cff; border:1px solid rgba(168,108,255,.2); }
 
 .card h2 { font-family:'Syne',sans-serif; font-size:20px; font-weight:700; margin-bottom:6px; letter-spacing:-.3px; line-height:1.2; }
 .card p  { font-size:13px; color:var(--text2); line-height:1.5; margin-bottom:28px; font-weight:300; }
@@ -104,6 +109,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .card-abo .card-arrow { color: var(--blue); }
 .card-ce .card-arrow  { color: var(--gold); }
 .card-ahi .card-arrow { color: #2ed87a; }
+.card-tower .card-arrow { color: #a86cff; }
 .card:hover .card-arrow { gap: 10px; }
 .card-arrow svg { width:14px; height:14px; transition:transform .2s ease; }
 .card:hover .card-arrow svg { transform: translateX(2px); }
@@ -140,7 +146,9 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .frame-title { font-size:12px; color:#4a5a7a; font-family:'Syne',sans-serif; letter-spacing:.3px; }
 .frame-tag { font-size:10px; padding:2px 8px; border-radius:100px; font-family:'Syne',sans-serif; font-weight:700; letter-spacing:.8px; }
 .frame-tag.abo { background:rgba(58,142,240,.12); color:#7ab8f8; }
-.frame-tag.ce  { background:rgba(245,200,66,.10); color:#f5c842; }
+.frame-tag.ce    { background:rgba(245,200,66,.10); color:#f5c842; }
+.frame-tag.ahi   { background:rgba(46,217,122,.10);  color:#2ed87a; }
+.frame-tag.tower { background:rgba(168,108,255,.10); color:#a86cff; }
 
 #dash-frame { flex:1; width:100%; border:none; background:#080c14; }
 
@@ -226,6 +234,27 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </div>
       </div>
+
+      <div class="card card-tower" onclick="openDash('https://ipn-ugraha.github.io/AHITOWER/','Monitoring Tower','tower')">
+        <div class="card-accent"></div>
+        <div class="card-num">04</div>
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="2" x2="12" y2="22"/>
+            <path d="M5 8.5C5 8.5 7 6 12 6s7 2.5 7 2.5"/>
+            <path d="M2 5C2 5 5.5 2 12 2s10 3 10 3"/>
+            <path d="M8 12c0 0 1.5-1.5 4-1.5s4 1.5 4 1.5"/>
+            <circle cx="12" cy="17" r="1.5" fill="#a86cff" stroke="none"/>
+          </svg>
+        </div>
+        <span class="card-tag">Monitoring · Tower</span>
+        <h2>Monitoring<br>Tower</h2>
+        <p>Monitoring kondisi dan status Tower transmisi · Pantau data per lokasi tower</p>
+        <div class="card-arrow">
+          Buka Dashboard
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+      </div>
     </div>
 
     <div class="footer">
@@ -261,17 +290,37 @@ var loader    = document.getElementById('frame-loader');
 var titleEl   = document.getElementById('frame-title');
 var tagEl     = document.getElementById('frame-tag');
 
+var tagLabels = { abo:'ABO', ce:'Common Enemy', ahi:'AHI MTU', tower:'Tower' };
+
 function openDash(url, title, type) {
-  /* External URLs: open in new tab to avoid X-Frame-Options block */
-  var isExternal = url.indexOf('http') === 0 && url.indexOf(window.location.hostname) < 0;
-  if (isExternal) { window.open(url, '_blank'); return; }
   titleEl.textContent = title;
-  tagEl.textContent   = type === 'abo' ? 'ABO' : (type === 'ce' ? 'Common Enemy' : 'AHI MTU');
+  tagEl.textContent   = tagLabels[type] || type;
   tagEl.className     = 'frame-tag ' + type;
   loader.classList.remove('hidden');
   frameWrap.classList.add('visible');
   landing.classList.add('hidden');
-  setTimeout(function(){ frame.src = url; }, 60);
+  /* Try iframe; if X-Frame-Options blocks it, fallback to new tab */
+  frame.onerror = null;
+  setTimeout(function(){
+    frame.src = url;
+    /* Detect iframe block: check if frame stays blank after timeout */
+    var checkTimer = setTimeout(function(){
+      try {
+        var doc = frame.contentDocument || frame.contentWindow.document;
+        if (!doc || doc.body === null || doc.body.innerHTML === '') {
+          closeDash();
+          window.open(url, '_blank');
+        }
+      } catch(e) {
+        /* cross-origin blocked = page DID load (no blank doc), ignore */
+      }
+    }, 5000);
+    frame.addEventListener('load', function onLoad(){
+      clearTimeout(checkTimer);
+      loader.classList.add('hidden');
+      frame.removeEventListener('load', onLoad);
+    });
+  }, 60);
 }
 
 function closeDash() {
@@ -280,11 +329,7 @@ function closeDash() {
   setTimeout(function(){ frame.src = ''; }, 400);
 }
 
-frame.addEventListener('load', function(){
-  if (frame.src && frame.src !== window.location.href) {
-    loader.classList.add('hidden');
-  }
-});
+/* load handled per-call in openDash */
 </script>
 </body>
 </html>
