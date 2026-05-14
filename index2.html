@@ -867,18 +867,27 @@ function renderPerformance(){
   const n = WL.length - 1;
 
   function calcSpeed(upt, normalize){
+    // Build opens series using WL indices
     const opens = WL.map(function(_,wi){
       var total = 0;
       ['G','T','P'].forEach(function(g){
         Object.entries(D[upt][g]).forEach(function(entry){
           var name = entry[0], arr = entry[1];
-          if(wi < arr.length){
-            var o = safeO(arr,wi);
-            total += (normalize && ROW_KEYS.includes(name)) ? o/ROW_DIVISOR : o;
-          }
+          var o = safeO(arr, wi);
+          total += (normalize && ROW_KEYS.includes(name)) ? o/ROW_DIVISOR : o;
         });
       });
       return total;
+    });
+    // currentOpen: gunakan data terbaru (mungkin ada baris beyond WL)
+    var currentOpenActual = 0;
+    ['G','T','P'].forEach(function(g){
+      Object.entries(D[upt][g]).forEach(function(entry){
+        var name = entry[0], arr = entry[1];
+        var latestIdx = arr.length - 1;
+        var o = latestIdx >= 0 ? (arr[latestIdx].o||0) : 0;
+        currentOpenActual += (normalize && ROW_KEYS.includes(name)) ? o/ROW_DIVISOR : o;
+      });
     });
     var nLast = opens.length - 1;  // fix: gunakan panjang opens bukan outer n
     var reductions = opens.slice(1).map(function(o,i){ return opens[i]-o; });
@@ -890,9 +899,10 @@ function renderPerformance(){
     var bestIdx = reductions.indexOf(bestVal);
     var bestPeriod = bestIdx>=0 && WL[bestIdx] ? WL[bestIdx]+'→'+(WL[bestIdx+1]||'?') : '—';
     var pctDone = opens[0]>0 ? Math.round((totalReduced/opens[0])*100) : 0;
+    var currentOpenFinal = Math.round(currentOpenActual);
     return {upt:upt, opens:opens, totalReduced:totalReduced, avgWeekly:avgWeekly,
             avgActive:avgActive, activeWeeks:activeWeeks, bestVal:bestVal,
-            bestPeriod:bestPeriod, pctDone:pctDone, initialOpen:opens[0], currentOpen:opens[nLast]};
+            bestPeriod:bestPeriod, pctDone:pctDone, initialOpen:opens[0], currentOpen:currentOpenFinal};
   }
 
   function th(txt, align){
