@@ -880,18 +880,19 @@ function renderPerformance(){
       });
       return total;
     });
+    var nLast = opens.length - 1;  // fix: gunakan panjang opens bukan outer n
     var reductions = opens.slice(1).map(function(o,i){ return opens[i]-o; });
-    var totalReduced = opens[0] - opens[n];
-    var avgWeekly = totalReduced / n;
+    var totalReduced = opens[0] - opens[nLast];
+    var avgWeekly = nLast > 0 ? totalReduced / nLast : 0;
     var activeWeeks = reductions.filter(function(r){return r>0;}).length;
     var avgActive = activeWeeks > 0 ? totalReduced/activeWeeks : 0;
-    var bestVal = Math.max.apply(null, reductions);
+    var bestVal = reductions.length > 0 ? Math.max.apply(null, reductions) : 0;
     var bestIdx = reductions.indexOf(bestVal);
-    var bestPeriod = WL[bestIdx]+'→'+WL[bestIdx+1];
+    var bestPeriod = bestIdx>=0 && WL[bestIdx] ? WL[bestIdx]+'→'+(WL[bestIdx+1]||'?') : '—';
     var pctDone = opens[0]>0 ? Math.round((totalReduced/opens[0])*100) : 0;
     return {upt:upt, opens:opens, totalReduced:totalReduced, avgWeekly:avgWeekly,
             avgActive:avgActive, activeWeeks:activeWeeks, bestVal:bestVal,
-            bestPeriod:bestPeriod, pctDone:pctDone, initialOpen:opens[0], currentOpen:opens[n]};
+            bestPeriod:bestPeriod, pctDone:pctDone, initialOpen:opens[0], currentOpen:opens[nLast]};
   }
 
   function th(txt, align){
