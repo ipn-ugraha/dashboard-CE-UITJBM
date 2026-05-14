@@ -1,11 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
-  <meta http-equiv="refresh" content="1200">
-  
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Common Enemy — UIT JBM 2026</title>
@@ -944,81 +939,144 @@ function renderPerformance(){
   }
 
   function buildPrediction(normData){
-    // Gunakan tanggal terakhir dari WL secara dinamis
-    var monthMap = {Jan:0,Feb:1,Mar:2,Apr:3,Mei:4,Jun:5,Jul:6,Agt:7,Sep:8,Okt:9,Nov:10,Des:11,
-                    May:4,Aug:7,Oct:9,Dec:11};
-    var lastWL = WL[WL.length-1]||'28 Apr';
-    var lastParts = lastWL.split(' ');
-    var lastDay = parseInt(lastParts[0])||1;
-    var lastMon = monthMap[lastParts[1]]||0;
-    var lastYear = lastParts[2] ? parseInt(lastParts[2]) : new Date().getFullYear();
-    var lastDateMs = new Date(lastYear, lastMon, lastDay).getTime();
     var today = new Date(); today.setHours(0,0,0,0);
-    var endOfYear  = new Date(today.getFullYear(), 11, 31).getTime();
-    var msPerDay   = 24*3600*1000;
-    var msPerWeek  = 7*msPerDay;
-    var daysLeft   = Math.max(0, Math.round((endOfYear - today.getTime()) / msPerDay));
-    var weeksLeft  = (endOfYear - lastDateMs) / msPerWeek;
+    var endOfYear = new Date(today.getFullYear(), 11, 31);
+    var msPerDay  = 24*3600*1000;
+    var daysLeft  = Math.max(0, Math.round((endOfYear - today) / msPerDay));
+
+    // ── Linear Regression ───────────────────────────────────────────────
+    function linReg(pts){
+      var n = pts.length;
+      if(n < 2) return null;
+      var sumX=0,sumY=0,sumXY=0,sumX2=0;
+      for(var i=0;i<n;i++){ sumX+=pts[i].x; sumY+=pts[i].y; sumXY+=pts[i].x*pts[i].y; sumX2+=pts[i].x*pts[i].x; }
+      var denom = n*sumX2 - sumX*sumX;
+      if(denom===0) return null;
+      var slope = (n*sumXY - sumX*sumY) / denom;
+      var intercept = (sumY - slope*sumX) / n;
+      var yMean = sumY/n; var ssTot=0,ssRes=0;
+      for(var i=0;i<n;i++){ ssTot+=Math.pow(pts[i].y-yMean,2); ssRes+=Math.pow(pts[i].y-(slope*pts[i].x+intercept),2); }
+      var r2 = ssTot>0 ? Math.max(0, 1-ssRes/ssTot) : 1;
+      return {slope:slope, intercept:intercept, r2:r2};
+    }
 
     var enriched = normData.map(function(r){
-      var wn = r.avgWeekly > 0 ? r.currentOpen / r.avgWeekly : Infinity;
-      var fms = lastDateMs + wn * msPerWeek;
-      var will = fms <= endOfYear;
-      var oEOY = r.avgWeekly > 0 ? Math.max(0, r.currentOpen - r.avgWeekly*weeksLeft) : r.currentOpen;
-      var pEOY = r.initialOpen > 0 ? Math.round((r.initialOpen-oEOY)/r.initialOpen*100) : 0;
-      var fd = new Date(fms);
-      var fs = wn===Infinity ? '—' : fd.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
-      var speedMin = (!will && r.avgWeekly>0) ? (r.currentOpen/weeksLeft).toFixed(1) : null;
-      return {upt:r.upt, currentOpen:r.currentOpen, avgWeekly:r.avgWeekly, initialOpen:r.initialOpen,
-              wn:wn, fms:fms, will:will, oEOY:oEOY, pEOY:pEOY, fs:fs, speedMin:speedMin, col:UPT_COLORS[r.upt]};
-    }).sort(function(a,b){ return a.will===b.will ? a.fms-b.fms : (b.will?1:-1); });
+      var opens = r.opens;
+      var n2 = opens.length;
+      if(n2 < 2) return {upt:r.upt, currentOpen:r.currentOpen, avgWeekly:0, avgRecent:0, r2:0, will:false, oEOY:r.currentOpen, finishDate:null, speedMin:0, col:UPT_COLORS[r.upt]};
+
+      // Build regression points (x = week index, y = open)
+      var pts = opens.map(function(o,i){ return {x:i, y:o}; });
+      var reg = linReg(pts);
+      // slope is open change per week (negative = improving)
+      var linPerWeek = reg ? -reg.slope : 0;  // improvement per week
+
+      // Recent 4-week trend
+      var rn = Math.min(4, n2-1);
+      var recentPerWeek = rn > 0 ? (opens[n2-1-rn] - opens[n2-1]) / rn : 0;
+
+      // Combined: 60% linReg + 40% recent (only if positive improvement)
+      var combined = 0;
+      if(linPerWeek > 0 && recentPerWeek > 0){
+        combined = linPerWeek*0.6 + recentPerWeek*0.4;
+      } else if(linPerWeek > 0){
+        combined = linPerWeek*0.7;
+      } else if(recentPerWeek > 0){
+        combined = recentPerWeek*0.7;
+      }
+
+      var weeksLeft2 = daysLeft / 7;
+      var currentOpen = r.currentOpen;
+      var weeksNeeded = combined > 0 ? currentOpen / combined : Infinity;
+      var will = isFinite(weeksNeeded) && weeksNeeded <= weeksLeft2;
+      var oEOY = combined > 0 ? Math.max(0, Math.round(currentOpen - combined*weeksLeft2)) : currentOpen;
+
+      // Finish date
+      var finishDate = null;
+      if(isFinite(weeksNeeded) && weeksNeeded < 9999){
+        var fd = new Date(today.getTime() + weeksNeeded*7*msPerDay);
+        var fm = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+        finishDate = fd.getDate()+' '+fm[fd.getMonth()]+' '+fd.getFullYear();
+      }
+
+      var speedMin = daysLeft > 0 && !will && currentOpen > 0
+        ? Math.ceil(currentOpen / weeksLeft2) : 0;
+
+      return {
+        upt:r.upt, currentOpen:currentOpen,
+        avgWeekly:Math.round(combined*10)/10,
+        linPerWeek:Math.round(linPerWeek*10)/10,
+        avgRecent:Math.round(recentPerWeek*10)/10,
+        r2:reg ? Math.round(reg.r2*100) : 0,
+        will:will, oEOY:oEOY,
+        finishDate:finishDate, speedMin:speedMin,
+        col:UPT_COLORS[r.upt]
+      };
+    }).sort(function(a,b){ return a.will===b.will ? a.oEOY-b.oEOY : (b.will?1:-1); });
 
     var canFinish = enriched.filter(function(r){return r.will;}).length;
-    var wlr = daysLeft;
-    var needSpeed = enriched.filter(function(r){return r.speedMin;})
-      .map(function(r){return r.upt.slice(0,3)+' '+r.speedMin;}).join(', ') || '—';
+    var needSpeed = enriched.filter(function(r){return r.speedMin>0;})
+      .map(function(r){return r.upt.slice(0,3)+' '+r.speedMin+'/mg';}).join(', ') || '—';
 
+    // ── Summary cards ───────────────────────────────────────────────────
     var sc = '<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:20px">'
-      + '<div class="stat-card"><div class="slb">Sisa Waktu</div><div class="sv" style="color:var(--accent)">'+wlr+'</div><div class="ssub">hari hingga 31 Des '+new Date().getFullYear()+'</div></div>'
-      + '<div class="stat-card"><div class="slb">Prediksi Selesai</div><div class="sv" style="color:#00e5a0">'+canFinish+'</div><div class="ssub">UPT selesai sebelum akhir 2026</div></div>'
-      + '<div class="stat-card"><div class="slb">Perlu Akselerasi</div><div class="sv" style="color:#ff4757">'+(6-canFinish)+'</div><div class="ssub">UPT belum bisa selesai</div></div>'
-      + '<div class="stat-card"><div class="slb">Kec. Min. Dibutuhkan</div><div class="sv" style="color:#ffa502;font-size:14px;padding-top:6px;font-family:var(--font-m)">'+needSpeed+'</div><div class="ssub">anomali/minggu agar selesai 2026</div></div>'
+      + '<div class="stat-card"><div class="slb">Sisa Waktu</div><div class="sv" style="color:var(--accent)">'+daysLeft+'</div><div class="ssub">hari hingga 31 Des '+today.getFullYear()+'</div></div>'
+      + '<div class="stat-card"><div class="slb">Prediksi Selesai</div><div class="sv" style="color:#3fb950">'+canFinish+'</div><div class="ssub">UPT selesai sebelum akhir tahun</div></div>'
+      + '<div class="stat-card"><div class="slb">Metode Prediksi</div><div class="sv" style="font-size:13px;color:#d29922">LinReg+WMA</div><div class="ssub">60% regresi linear + 40% 4 data terakhir</div></div>'
+      + '<div class="stat-card"><div class="slb">Kecepatan Minimum</div><div class="sv" style="color:#f85149;font-size:13px">'+needSpeed+'</div><div class="ssub">penyelesaian/minggu agar selesai '+today.getFullYear()+'</div></div>'
       + '</div>';
 
-    var rows = enriched.map(function(r){
-      var barCol = r.will ? '#00e5a0' : r.pEOY>=80 ? '#ffa502' : '#ff4757';
-      var badge = r.will
-        ? '<span style="background:rgba(0,229,160,0.12);color:#00e5a0;border:1px solid rgba(0,229,160,0.25);font-family:var(--font-m);font-size:10px;padding:3px 10px;border-radius:4px;font-weight:600">&#10003; Selesai sebelum 2027</span>'
-        : '<span style="background:rgba(255,71,87,0.1);color:#ff4757;border:1px solid rgba(255,71,87,0.2);font-family:var(--font-m);font-size:10px;padding:3px 10px;border-radius:4px">&#10007; Belum selesai akhir 2026</span>';
-      var speedNote = r.speedMin ? '<div style="font-family:var(--font-m);font-size:9px;color:#ffa502;margin-top:2px">Butuh min. '+r.speedMin+'/mggu</div>' : '';
-      var bar = '<div style="background:rgba(0,212,255,0.08);border-radius:3px;height:8px;overflow:hidden;margin-bottom:3px">'
-              + '<div style="width:'+Math.min(100,r.pEOY)+'%;height:100%;background:'+barCol+';border-radius:3px"></div></div>'
-              + '<div style="font-family:var(--font-m);font-size:9px;color:var(--text3)">'+r.pEOY+'% selesai akhir 2026</div>'
-              + speedNote;
-      return '<tr style="border-bottom:1px solid var(--line)">'
-        + td('<span style="font-family:var(--font-m);font-size:12px;font-weight:700;color:'+r.col+'">'+r.upt+'</span>')
-        + td('<span style="font-family:var(--font-m);font-size:12px;color:var(--text2)">'+r.currentOpen.toFixed(0)+'</span>','right')
-        + td('<span style="color:var(--accent);font-weight:600;font-family:var(--font-m);font-size:12px">'+r.avgWeekly.toFixed(1)+'</span><span style="color:var(--text3);font-size:10px;font-family:var(--font-m)">/mggu</span>','right')
-        + td('<span style="font-family:var(--font-m);font-size:11px;color:'+(r.will?'#00e5a0':'#ff4757')+';font-weight:600">'+r.fs+'</span>','right')
-        + td('<span style="font-family:var(--font-m);font-size:11px;color:var(--text2)">'+r.oEOY.toFixed(0)+'</span><span style="color:var(--text3);font-size:9px"> anomali</span>','right')
-        + td(bar,'left','min-width:160px')
-        + td(badge)
-        + '</tr>';
+    // ── Table ────────────────────────────────────────────────────────────
+    function th(label, align){
+      return '<th style="padding:8px 10px;text-align:'+(align||'left')+';font-family:var(--font-m);font-size:9px;color:var(--text3);letter-spacing:0.08em;font-weight:500;border-bottom:1px solid var(--line)">'+label+'</th>';
+    }
+    function td(val, color, align){
+      return '<td style="padding:8px 10px;text-align:'+(align||'right')+';font-family:var(--font-m);font-size:12px;color:'+(color||'var(--text)')+'">'+val+'</td>';
+    }
+
+    var thead = '<tr>'
+      +th('UPT','left')+th('OPEN','right')+th('LINREG/MGG','right')
+      +th('4MGG TERAKHIR','right')+th('GABUNGAN/MGG','right')+th('R²','right')
+      +th('PREDIKSI SELESAI','right')+th('SISA AKHIR '+today.getFullYear(),'right')
+      +th('PROGRESS')+'</tr>';
+
+    var rows = enriched.map(function(r,ri){
+      var medal = ri===0?'🥇':ri===1?'🥈':ri===2?'🥉':'';
+      var finCol = r.will?'#3fb950':'#f85149';
+      var finTxt = r.will?(r.finishDate||'—'):'✗ Tidak selesai';
+      var r2col  = r.r2>=70?'#3fb950':r.r2>=40?'#d29922':'#f85149';
+      var barPct = r.avgWeekly>0 ? Math.min(99,Math.round(Math.min(1,r.avgWeekly*daysLeft/7/Math.max(1,r.currentOpen))*100)) : 0;
+      if(r.will) barPct=100;
+      var barColor = r.will?'#3fb950':r.avgWeekly>0?'#d29922':'#484f58';
+      var bar = '<div style="display:flex;align-items:center;gap:6px">'
+        +'<div style="flex:1;height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden">'
+        +'<div style="width:'+barPct+'%;height:100%;background:'+barColor+';border-radius:3px"></div></div>'
+        +'<span style="font-family:var(--font-m);font-size:10px;color:'+barColor+'">'+barPct+'%</span></div>';
+
+      return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
+        +td('<span style="color:'+r.col+'">'+medal+' '+r.upt+'</span>',null,'left')
+        +td(r.currentOpen.toLocaleString(), r.currentOpen>0?'#f85149':'#3fb950')
+        +td(r.linPerWeek>0?'-'+r.linPerWeek:'—', r.linPerWeek>0?'var(--text)':'#484f58')
+        +td(r.avgRecent>0?'-'+r.avgRecent:'—', r.avgRecent>0?'var(--accent)':'#484f58')
+        +td(r.avgWeekly>0?'-'+r.avgWeekly:'—', r.avgWeekly>0?'#d29922':'#484f58')
+        +td(r.r2+'%', r2col)
+        +td(finTxt, finCol)
+        +td(r.will?'0':r.oEOY.toLocaleString(), r.will?'#3fb950':'#f85149')
+        +td(bar,null,'left')
+        +'</tr>';
     }).join('');
 
-    var thead = '<thead><tr style="border-bottom:1px solid rgba(0,212,255,0.15)">'
-      + th('UPT') + th('OPEN SKRG','right') + th('KECEPATAN','right')
-      + th('PREDIKSI SELESAI','right') + th('SISA AKHIR 2026','right')
-      + th('PROGRESS S/D AKHIR 2026') + th('STATUS')
-      + '</tr></thead>';
+    var table = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
+      +'<thead>'+thead+'</thead><tbody>'+rows+'</tbody></table></div>';
 
-    return sc
-      + '<div class="chart-card" style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
-      + thead + '<tbody>'+rows+'</tbody></table></div>'
-      + '<div class="note-box" style="margin-top:12px;font-size:10px">'
-      + '<strong>Asumsi:</strong> Kecepatan konstan = rata-rata mingguan sejak 08 Feb 2026 (normalisasi ROW B1 ÷ 100). '
-      + 'Sisa waktu: <strong>'+wlr+' hari</strong> ('+lastWL+' → 31 Des '+new Date().getFullYear()+'). '
-      + '"Butuh X/mggu" = kecepatan minimum agar selesai tepat akhir 2026.</div>';
+    var lastWLdisp = WL[WL.length-1]||'—';
+    var desc = '<div class="note-box" style="margin-top:16px;font-size:11px;color:var(--text3)">'
+      +'<strong>Metode:</strong> Linear Regression (slope per minggu) bobot 60% + Rata-rata 4 data terakhir bobot 40%. '
+      +'R² = konsistensi tren (≥70%: konsisten, 40-70%: cukup, &lt;40%: fluktuatif). '
+      +'Sisa: <strong>'+daysLeft+' hari</strong> (per '+lastWLdisp+' → 31 Des '+today.getFullYear()+'). ROW B1 ÷100.'
+      +'</div>';
+
+    return sc + table + desc;
   }
 
   var rawData  = UPTS.map(function(u){return calcSpeed(u, false);});
