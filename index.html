@@ -74,6 +74,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .card-ce::before  { background: radial-gradient(ellipse at 0% 0%, rgba(245,200,66,0.08) 0%, transparent 60%); }
 .card-ahi::before { background: radial-gradient(ellipse at 0% 0%, rgba(46,217,122,0.08) 0%, transparent 60%); }
 .card-tower::before { background: radial-gradient(ellipse at 0% 0%, rgba(168,108,255,0.08) 0%, transparent 60%); }
+.card-prot::before { background: radial-gradient(ellipse at 0% 0%, rgba(255,112,67,0.08) 0%, transparent 60%); }
 .card:hover { transform: translateY(-4px); border-color: var(--border-hover); box-shadow: 0 24px 60px rgba(0,0,0,.4); }
 .card:hover::before { opacity: 1; }
 
@@ -82,17 +83,20 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .card-ce .card-accent  { background: var(--gold); }
 .card-ahi .card-accent { background: #2ed87a; }
 .card-tower .card-accent { background: #a86cff; }
+.card-prot .card-accent { background: #ff7043; }
 
 .card-icon { width:48px; height:48px; border-radius:14px; display:flex; align-items:center; justify-content:center; margin-bottom:24px; }
 .card-abo .card-icon { background:rgba(58,142,240,.12); border:1px solid rgba(58,142,240,.2); }
 .card-ce .card-icon  { background:rgba(245,200,66,.10); border:1px solid rgba(245,200,66,.2); }
 .card-ahi .card-icon { background:rgba(46,217,122,.10); border:1px solid rgba(46,217,122,.2); }
 .card-tower .card-icon { background:rgba(168,108,255,.10); border:1px solid rgba(168,108,255,.2); }
+.card-prot .card-icon { background:rgba(255,112,67,.10); border:1px solid rgba(255,112,67,.2); }
 .card-icon svg { width:22px; height:22px; }
 .card-abo .card-icon svg { stroke: var(--blue); }
 .card-ce .card-icon svg  { stroke: var(--gold); }
 .card-ahi .card-icon svg { stroke: #2ed87a; }
 .card-tower .card-icon svg { stroke: #a86cff; }
+.card-prot .card-icon svg { stroke: #ff7043; }
 
 .card-num { position:absolute; top:28px; right:28px; font-family:'Syne',sans-serif; font-size:48px; font-weight:800; line-height:1; opacity:.04; pointer-events:none; }
 
@@ -101,6 +105,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .card-ce .card-tag  { background:rgba(245,200,66,.10); color:#f5c842; border:1px solid rgba(245,200,66,.2); }
 .card-ahi .card-tag { background:rgba(46,217,122,.10); color:#2ed87a; border:1px solid rgba(46,217,122,.2); }
 .card-tower .card-tag { background:rgba(168,108,255,.10); color:#a86cff; border:1px solid rgba(168,108,255,.2); }
+.card-prot .card-tag { background:rgba(255,112,67,.10); color:#ff7043; border:1px solid rgba(255,112,67,.2); }
 
 .card h2 { font-family:'Syne',sans-serif; font-size:20px; font-weight:700; margin-bottom:6px; letter-spacing:-.3px; line-height:1.2; }
 .card p  { font-size:13px; color:var(--text2); line-height:1.5; margin-bottom:28px; font-weight:300; }
@@ -110,6 +115,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .card-ce .card-arrow  { color: var(--gold); }
 .card-ahi .card-arrow { color: #2ed87a; }
 .card-tower .card-arrow { color: #a86cff; }
+.card-prot .card-arrow { color: #ff7043; }
 .card:hover .card-arrow { gap: 10px; }
 .card-arrow svg { width:14px; height:14px; transition:transform .2s ease; }
 .card:hover .card-arrow svg { transform: translateX(2px); }
@@ -149,6 +155,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .frame-tag.ce    { background:rgba(245,200,66,.10); color:#f5c842; }
 .frame-tag.ahi   { background:rgba(46,217,122,.10);  color:#2ed87a; }
 .frame-tag.tower { background:rgba(168,108,255,.10); color:#a86cff; }
+.frame-tag.prot  { background:rgba(255,112,67,.10); color:#ff7043; }
 
 #dash-frame { flex:1; width:100%; border:none; background:#080c14; }
 
@@ -255,6 +262,24 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </div>
       </div>
+
+      <div class="card card-prot" onclick="openDash('https://ipn-ugraha.github.io/proteksi/','Monitoring Proteksi','prot')">
+        <div class="card-accent"></div>
+        <div class="card-num">05</div>
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <polyline points="9 12 11 14 15 10"/>
+          </svg>
+        </div>
+        <span class="card-tag">Monitoring · Proteksi</span>
+        <h2>Monitoring<br>Proteksi</h2>
+        <p>Monitoring kondisi sistem proteksi · Pantau status relai dan gangguan per bay</p>
+        <div class="card-arrow">
+          Buka Dashboard
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+      </div>
     </div>
 
     <div class="footer">
@@ -290,7 +315,7 @@ var loader    = document.getElementById('frame-loader');
 var titleEl   = document.getElementById('frame-title');
 var tagEl     = document.getElementById('frame-tag');
 
-var tagLabels = { abo:'ABO', ce:'Common Enemy', ahi:'AHI MTU', tower:'Tower' };
+var tagLabels = { abo:'ABO', ce:'Common Enemy', ahi:'AHI MTU', tower:'Tower', prot:'Proteksi' };
 
 function openDash(url, title, type) {
   titleEl.textContent = title;
